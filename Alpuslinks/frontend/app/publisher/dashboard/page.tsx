@@ -81,8 +81,27 @@ export default function PublisherDashboardPage() {
     }
   }
 
-  const handleOrderTimeRangeChange = (timeRange: '7d' | '30d' | '90d') => {
-    loadOrderStatusData(timeRange)
+  const handleOrderTimeRangeChange = (timeRange: '7d' | '30d' | '90d' | 'custom') => {
+    if (timeRange !== 'custom') {
+      loadOrderStatusData(timeRange)
+    }
+  }
+
+  const handleCustomOrderDateChange = (startDate: string, endDate: string) => {
+    loadOrderStatusDataWithCustomDates(startDate, endDate)
+  }
+
+  const loadOrderStatusDataWithCustomDates = async (startDate: string, endDate: string) => {
+    try {
+      setOrderLoading(true)
+      const response = await apiService.getPublisherOrderStatsTrendsWithDates(startDate, endDate)
+      const responseData = response.data as OrderStatusTrendsResponse
+      setOrderStatusData(responseData.data || [])
+    } catch (err) {
+      console.error('Failed to load order status data:', err)
+    } finally {
+      setOrderLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -189,6 +208,7 @@ export default function PublisherDashboardPage() {
               data={orderStatusData}
               loading={orderLoading}
               onTimeRangeChange={handleOrderTimeRangeChange}
+              onCustomDateChange={handleCustomOrderDateChange}
             />
           </div>
 

@@ -557,6 +557,10 @@ class ApiService {
     return this.request(`/users/login-trends?period=${period}`)
   }
 
+  async getUserLoginTrendsWithDates(startDate: string, endDate: string) {
+    return this.request(`/users/login-trends?startDate=${startDate}&endDate=${endDate}`)
+  }
+
   async getOnlineUserStats() {
     return this.request('/users/online-stats')
   }
@@ -956,12 +960,24 @@ class ApiService {
     return this.request(`/orders/admin/stats/trends?period=${period}`)
   }
 
+  async getOrderStatsTrendsWithDates(startDate: string, endDate: string) {
+    return this.request(`/orders/admin/stats/trends?startDate=${startDate}&endDate=${endDate}`)
+  }
+
   async getPublisherOrderStatsTrends(period: '7d' | '30d' | '90d' = '30d') {
     return this.request(`/orders/publisher/stats/trends?period=${period}`)
   }
 
+  async getPublisherOrderStatsTrendsWithDates(startDate: string, endDate: string) {
+    return this.request(`/orders/publisher/stats/trends?startDate=${startDate}&endDate=${endDate}`)
+  }
+
   async getAdvertiserOrderStatsTrends(period: '7d' | '30d' | '90d' = '30d') {
     return this.request(`/orders/advertiser/stats/trends?period=${period}`)
+  }
+
+  async getAdvertiserOrderStatsTrendsWithDates(startDate: string, endDate: string) {
+    return this.request(`/orders/advertiser/stats/trends?startDate=${startDate}&endDate=${endDate}`)
   }
 }
 

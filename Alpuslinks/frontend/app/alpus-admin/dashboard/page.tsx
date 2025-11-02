@@ -126,12 +126,71 @@ export default function AdminDashboardPage() {
     }
   }
 
-  const handleTimeRangeChange = (timeRange: '7d' | '30d' | '90d') => {
-    loadDashboardData(timeRange)
+  const handleTimeRangeChange = (timeRange: '7d' | '30d' | '90d' | 'custom') => {
+    if (timeRange !== 'custom') {
+      loadDashboardData(timeRange)
+    }
   }
 
-  const handleOrderTimeRangeChange = (timeRange: '7d' | '30d' | '90d') => {
-    loadOrderStatusData(timeRange)
+  const handleCustomLoginDateChange = (startDate: string, endDate: string) => {
+    loadDashboardDataWithCustomDates(startDate, endDate)
+  }
+
+  const loadDashboardDataWithCustomDates = async (startDate: string, endDate: string) => {
+    try {
+      setLoading(true)
+      const statsResponse = await apiService.getUserStats()
+      const statsData = statsResponse.data as UserStatsResponse
+      
+      // Load login trends with custom dates
+      const trendsResponse = await apiService.getUserLoginTrendsWithDates(startDate, endDate)
+      const trendsData = trendsResponse.data as LoginTrendsResponse
+      
+      setLoginData(trendsData.data)
+      
+      const roleCounts = statsData.roles.reduce((acc: any, role: any) => {
+        const roleName = role._id.toLowerCase()
+        if (roleName.includes('advertiser')) {
+          acc.advertisers = role.count
+        } else if (roleName.includes('publisher')) {
+          acc.publishers = role.count
+        }
+        return acc
+      }, { advertisers: 0, publishers: 0 })
+      
+      setSummary({
+        totalAdvertisers: roleCounts.advertisers,
+        totalPublishers: roleCounts.publishers,
+        totalUsers: statsData.overview.total
+      })
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOrderTimeRangeChange = (timeRange: '7d' | '30d' | '90d' | 'custom') => {
+    if (timeRange !== 'custom') {
+      loadOrderStatusData(timeRange)
+    }
+  }
+
+  const handleCustomOrderDateChange = (startDate: string, endDate: string) => {
+    loadOrderStatusDataWithCustomDates(startDate, endDate)
+  }
+
+  const loadOrderStatusDataWithCustomDates = async (startDate: string, endDate: string) => {
+    try {
+      setOrderLoading(true)
+      const response = await apiService.getOrderStatsTrendsWithDates(startDate, endDate)
+      const responseData = response.data as OrderStatusTrendsResponse
+      setOrderStatusData(responseData.data || [])
+    } catch (err) {
+      console.error('Failed to load order status data:', err)
+    } finally {
+      setOrderLoading(false)
+    }
   }
 
   return (
@@ -191,6 +250,7 @@ export default function AdminDashboardPage() {
                 data={loginData} 
                 loading={loading} 
                 onTimeRangeChange={handleTimeRangeChange}
+                onCustomDateChange={handleCustomLoginDateChange}
               />
             </div>
             
@@ -200,6 +260,7 @@ export default function AdminDashboardPage() {
                 data={orderStatusData}
                 loading={orderLoading}
                 onTimeRangeChange={handleOrderTimeRangeChange}
+                onCustomDateChange={handleCustomOrderDateChange}
               />
             </div>
           </div>

@@ -808,24 +808,32 @@ router.get('/admin/stats/trends', auth, async (req, res) => {
       });
     }
 
-    const { period = '30d' } = req.query;
+    const { period = '30d', startDate: startDateParam, endDate: endDateParam } = req.query;
     
-    // Calculate date range based on period
-    const endDate = new Date();
-    const startDate = new Date();
+    // Calculate date range based on period or use custom dates
+    let endDate = new Date();
+    let startDate = new Date();
     
-    switch (period) {
-      case '7d':
-        startDate.setDate(endDate.getDate() - 7);
-        break;
-      case '30d':
-        startDate.setDate(endDate.getDate() - 30);
-        break;
-      case '90d':
-        startDate.setDate(endDate.getDate() - 90);
-        break;
-      default:
-        startDate.setDate(endDate.getDate() - 30);
+    // If custom dates provided, use them; otherwise use period
+    if (startDateParam && endDateParam) {
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      // Set endDate to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      switch (period) {
+        case '7d':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case '30d':
+          startDate.setDate(endDate.getDate() - 30);
+          break;
+        case '90d':
+          startDate.setDate(endDate.getDate() - 90);
+          break;
+        default:
+          startDate.setDate(endDate.getDate() - 30);
+      }
     }
 
     // Get orders grouped by date and status
@@ -933,24 +941,32 @@ router.get('/publisher/stats/trends', auth, async (req, res) => {
       });
     }
 
-    const { period = '30d' } = req.query;
+    const { period = '30d', startDate: startDateParam, endDate: endDateParam } = req.query;
     
-    // Calculate date range based on period
-    const endDate = new Date();
-    const startDate = new Date();
+    // Calculate date range based on period or use custom dates
+    let endDate = new Date();
+    let startDate = new Date();
     
-    switch (period) {
-      case '7d':
-        startDate.setDate(endDate.getDate() - 7);
-        break;
-      case '30d':
-        startDate.setDate(endDate.getDate() - 30);
-        break;
-      case '90d':
-        startDate.setDate(endDate.getDate() - 90);
-        break;
-      default:
-        startDate.setDate(endDate.getDate() - 30);
+    // If custom dates provided, use them; otherwise use period
+    if (startDateParam && endDateParam) {
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      // Set endDate to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      switch (period) {
+        case '7d':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case '30d':
+          startDate.setDate(endDate.getDate() - 30);
+          break;
+        case '90d':
+          startDate.setDate(endDate.getDate() - 90);
+          break;
+        default:
+          startDate.setDate(endDate.getDate() - 30);
+      }
     }
 
     // Get orders grouped by date and status for this publisher
@@ -1059,24 +1075,32 @@ router.get('/advertiser/stats/trends', auth, async (req, res) => {
       });
     }
 
-    const { period = '30d' } = req.query;
+    const { period = '30d', startDate: startDateParam, endDate: endDateParam } = req.query;
     
-    // Calculate date range based on period
-    const endDate = new Date();
-    const startDate = new Date();
+    // Calculate date range based on period or use custom dates
+    let endDate = new Date();
+    let startDate = new Date();
     
-    switch (period) {
-      case '7d':
-        startDate.setDate(endDate.getDate() - 7);
-        break;
-      case '30d':
-        startDate.setDate(endDate.getDate() - 30);
-        break;
-      case '90d':
-        startDate.setDate(endDate.getDate() - 90);
-        break;
-      default:
-        startDate.setDate(endDate.getDate() - 30);
+    // If custom dates provided, use them; otherwise use period
+    if (startDateParam && endDateParam) {
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      // Set endDate to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      switch (period) {
+        case '7d':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case '30d':
+          startDate.setDate(endDate.getDate() - 30);
+          break;
+        case '90d':
+          startDate.setDate(endDate.getDate() - 90);
+          break;
+        default:
+          startDate.setDate(endDate.getDate() - 30);
+      }
     }
 
     // Get orders grouped by date and status for this advertiser

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
+import { Calendar, X } from 'lucide-react'
 
 // Dynamically import ApexCharts to avoid SSR issues
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false })
@@ -19,13 +20,26 @@ interface OrderStatusData {
 interface OrderStatusChartProps {
   data: OrderStatusData[]
   loading?: boolean
-  onTimeRangeChange?: (timeRange: '7d' | '30d' | '90d') => void
+  onTimeRangeChange?: (timeRange: '7d' | '30d' | '90d' | 'custom') => void
+  onCustomDateChange?: (startDate: string, endDate: string) => void
 }
 
-export function OrderStatusChart({ data, loading = false, onTimeRangeChange }: OrderStatusChartProps) {
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d')
+export function OrderStatusChart({ data, loading = false, onTimeRangeChange, onCustomDateChange }: OrderStatusChartProps) {
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'custom'>('30d')
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false)
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
   const chartRef = useRef<any>(null)
   const { theme } = useTheme()
+
+  // Initialize custom dates to last 30 days
+  useEffect(() => {
+    const end = new Date()
+    const start = new Date()
+    start.setDate(start.getDate() - 30)
+    setEndDate(end.toISOString().split('T')[0])
+    setStartDate(start.toISOString().split('T')[0])
+  }, [])
 
   // Calculate totals for summary
   const totals = {
@@ -309,14 +323,20 @@ export function OrderStatusChart({ data, loading = false, onTimeRangeChange }: O
                 className="kt-select w-36 px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer appearance-none pr-8"
                 value={timeRange}
                 onChange={(e) => {
-                  const newRange = e.target.value as '7d' | '30d' | '90d'
+                  const newRange = e.target.value as '7d' | '30d' | '90d' | 'custom'
                   setTimeRange(newRange)
-                  onTimeRangeChange?.(newRange)
+                  if (newRange === 'custom') {
+                    setShowCustomDatePicker(true)
+                  } else {
+                    setShowCustomDatePicker(false)
+                    onTimeRangeChange?.(newRange)
+                  }
                 }}
               >
                 <option value="7d" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">7 days</option>
                 <option value="30d" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">1 month</option>
                 <option value="90d" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">3 months</option>
+                <option value="custom" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Custom</option>
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                 <svg 
@@ -329,6 +349,47 @@ export function OrderStatusChart({ data, loading = false, onTimeRangeChange }: O
                 </svg>
               </div>
             </div>
+
+            {/* Custom Date Picker */}
+            {showCustomDatePicker && (
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-2">
+                <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-2 py-1 text-sm font-medium bg-transparent border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-gray-500 dark:text-gray-400">to</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="px-2 py-1 text-sm font-medium bg-transparent border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  onClick={() => {
+                    if (startDate && endDate && new Date(startDate) <= new Date(endDate)) {
+                      onCustomDateChange?.(startDate, endDate)
+                    }
+                  }}
+                  className="px-3 py-1 text-sm font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCustomDatePicker(false)
+                    setTimeRange('30d')
+                    onTimeRangeChange?.('30d')
+                  }}
+                  className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
