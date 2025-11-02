@@ -897,6 +897,59 @@ class ApiService {
       method: 'DELETE'
     })
   }
+
+  // Calendar Event methods
+  async getCalendarEvents(start?: string, end?: string) {
+    const params = new URLSearchParams()
+    if (start) params.append('start', start)
+    if (end) params.append('end', end)
+    
+    return this.request(`/calendar${params.toString() ? `?${params.toString()}` : ''}`)
+  }
+
+  async getCalendarEvent(eventId: string) {
+    return this.request(`/calendar/${eventId}`)
+  }
+
+  async createCalendarEvent(eventData: {
+    title: string
+    description?: string
+    location?: string
+    start: string | Date
+    end?: string | Date
+    allDay?: boolean
+    backgroundColor?: string
+    borderColor?: string
+    textColor?: string
+  }) {
+    return this.request('/calendar', {
+      method: 'POST',
+      body: JSON.stringify(eventData)
+    })
+  }
+
+  async updateCalendarEvent(eventId: string, eventData: {
+    title?: string
+    description?: string
+    location?: string
+    start?: string | Date
+    end?: string | Date
+    allDay?: boolean
+    backgroundColor?: string
+    borderColor?: string
+    textColor?: string
+  }) {
+    return this.request(`/calendar/${eventId}`, {
+      method: 'PUT',
+      body: JSON.stringify(eventData)
+    })
+  }
+
+  async deleteCalendarEvent(eventId: string) {
+    return this.request(`/calendar/${eventId}`, {
+      method: 'DELETE'
+    })
+  }
 }
 
 export const apiService = new ApiService(API_BASE_URL)

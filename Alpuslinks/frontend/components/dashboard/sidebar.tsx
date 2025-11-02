@@ -17,7 +17,8 @@ import {
   Globe,
   FileText,
   Tag,
-  ClipboardList
+  ClipboardList,
+  Calendar
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
@@ -151,6 +152,7 @@ export function Sidebar() {
         badge: pendingWebsitesCount > 0 ? pendingWebsitesCount : undefined
       })
       userChildren.push({ name: 'Order Management', icon: ClipboardList, href: '/alpus-admin/orders' })
+      userChildren.push({ name: 'Calendar', icon: Calendar, href: '/alpus-admin/calendar' })
       userChildren.push({ name: 'System Settings', icon: Settings, href: '/alpus-admin/settings' })
     }
 

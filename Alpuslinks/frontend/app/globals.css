@@ -760,4 +760,148 @@
   .kt-footer__link {
     @apply text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white;
   }
+
+  /* FullCalendar Styles */
+  .fc {
+    font-family: inherit;
+  }
+
+  .fc-header-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .fc-toolbar-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: rgb(17 24 39);
+  }
+
+  .dark .fc-toolbar-title {
+    color: rgb(255 255 255);
+  }
+
+  .fc-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.5rem;
+    background-color: rgb(255 255 255);
+    color: rgb(55 65 81);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dark .fc-button {
+    background-color: rgb(31 41 55);
+    border-color: rgb(55 65 81);
+    color: rgb(209 213 219);
+  }
+
+  .fc-button:hover {
+    background-color: rgb(249 250 251);
+  }
+
+  .dark .fc-button:hover {
+    background-color: rgb(55 65 81);
+  }
+
+  .fc-button-primary {
+    background-color: rgb(37 99 235);
+    border-color: rgb(37 99 235);
+    color: rgb(255 255 255);
+  }
+
+  .fc-button-primary:hover {
+    background-color: rgb(29 78 216);
+  }
+
+  .fc-button-active {
+    background-color: rgb(37 99 235);
+    border-color: rgb(37 99 235);
+    color: rgb(255 255 255);
+  }
+
+  .fc-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .fc-daygrid-event {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .fc-daygrid-day {
+    border-color: rgb(229 231 235);
+  }
+
+  .dark .fc-daygrid-day {
+    border-color: rgb(55 65 81);
+  }
+
+  .fc-col-header-cell {
+    padding: 0.75rem;
+    background-color: rgb(249 250 251);
+    border-color: rgb(229 231 235);
+    font-weight: 600;
+    color: rgb(55 65 81);
+  }
+
+  .dark .fc-col-header-cell {
+    background-color: rgb(31 41 55);
+    border-color: rgb(55 65 81);
+    color: rgb(209 213 219);
+  }
+
+  .fc-daygrid-day-number {
+    padding: 0.5rem;
+    color: rgb(55 65 81);
+  }
+
+  .dark .fc-daygrid-day-number {
+    color: rgb(209 213 219);
+  }
+
+  .fc-day-today {
+    background-color: rgb(239 246 255);
+  }
+
+  .dark .fc-day-today {
+    background-color: rgb(30 58 138 / 0.3);
+  }
+
+  .fc-timegrid-slot {
+    border-color: rgb(229 231 235);
+  }
+
+  .dark .fc-timegrid-slot {
+    border-color: rgb(55 65 81);
+  }
+
+  .fc-timegrid-col {
+    border-color: rgb(229 231 235);
+  }
+
+  .dark .fc-timegrid-col {
+    border-color: rgb(55 65 81);
+  }
+
+  .fc-event-title {
+    font-weight: 500;
+  }
+
+  .fc-scrollgrid {
+    border-color: rgb(229 231 235);
+  }
+
+  .dark .fc-scrollgrid {
+    border-color: rgb(55 65 81);
+  }
 }
