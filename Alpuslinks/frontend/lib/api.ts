@@ -950,6 +950,19 @@ class ApiService {
       method: 'DELETE'
     })
   }
+
+  // Order statistics methods
+  async getOrderStatsTrends(period: '7d' | '30d' | '90d' = '30d') {
+    return this.request(`/orders/admin/stats/trends?period=${period}`)
+  }
+
+  async getPublisherOrderStatsTrends(period: '7d' | '30d' | '90d' = '30d') {
+    return this.request(`/orders/publisher/stats/trends?period=${period}`)
+  }
+
+  async getAdvertiserOrderStatsTrends(period: '7d' | '30d' | '90d' = '30d') {
+    return this.request(`/orders/advertiser/stats/trends?period=${period}`)
+  }
 }
 
 export const apiService = new ApiService(API_BASE_URL)

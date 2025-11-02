@@ -1,29 +1,40 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 
 // Dynamically import ApexCharts to avoid SSR issues
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
-interface UserLoginData {
+interface OrderStatusData {
   date: string
-  advertisers: number
-  publishers: number
-  total: number
+  requested: number
+  inProgress: number
+  advertiserApproval: number
+  completed: number
+  rejected: number
 }
 
-interface UserLoginChartProps {
-  data: UserLoginData[]
+interface OrderStatusChartProps {
+  data: OrderStatusData[]
   loading?: boolean
   onTimeRangeChange?: (timeRange: '7d' | '30d' | '90d') => void
 }
 
-export function UserLoginChart({ data, loading = false, onTimeRangeChange }: UserLoginChartProps) {
-  const [chartType, setChartType] = useState<'line' | 'bar'>('line')
+export function OrderStatusChart({ data, loading = false, onTimeRangeChange }: OrderStatusChartProps) {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d')
+  const chartRef = useRef<any>(null)
   const { theme } = useTheme()
+
+  // Calculate totals for summary
+  const totals = {
+    requested: data.reduce((sum, item) => sum + item.requested, 0),
+    inProgress: data.reduce((sum, item) => sum + item.inProgress, 0),
+    advertiserApproval: data.reduce((sum, item) => sum + item.advertiserApproval, 0),
+    completed: data.reduce((sum, item) => sum + item.completed, 0),
+    rejected: data.reduce((sum, item) => sum + item.rejected, 0)
+  }
 
   // Format date for display (short month and day)
   const formatDate = (dateStr: string) => {
@@ -35,25 +46,34 @@ export function UserLoginChart({ data, loading = false, onTimeRangeChange }: Use
   const categories = data.map(item => formatDate(item.date))
   const series = [
     {
-      name: 'Advertisers',
-      data: data.map(item => item.advertisers)
+      name: 'Requested',
+      data: data.map(item => item.requested)
     },
     {
-      name: 'Publishers',
-      data: data.map(item => item.publishers)
+      name: 'In Progress',
+      data: data.map(item => item.inProgress)
     },
     {
-      name: 'Total',
-      data: data.map(item => item.total)
+      name: 'Pending Approval',
+      data: data.map(item => item.advertiserApproval)
+    },
+    {
+      name: 'Completed',
+      data: data.map(item => item.completed)
+    },
+    {
+      name: 'Rejected',
+      data: data.map(item => item.rejected)
     }
   ]
 
-  // Chart options for ApexCharts - Beautiful layout
+  // Chart options matching Metronic Earnings style - Beautiful layout
   const chartOptions: any = {
     series: series,
     chart: {
-      type: chartType === 'line' ? 'line' : 'bar',
+      type: 'area',
       height: 320,
+      stacked: true,
       toolbar: {
         show: false
       },
@@ -72,17 +92,19 @@ export function UserLoginChart({ data, loading = false, onTimeRangeChange }: Use
           enabled: true,
           speed: 350
         }
+      },
+      sparkline: {
+        enabled: false
       }
     },
     dataLabels: {
       enabled: false
     },
-    stroke: chartType === 'line' ? {
+    stroke: {
       curve: 'smooth',
       width: 3,
-      lineCap: 'round'
-    } : {
-      width: 0
+      lineCap: 'round',
+      colors: ['#F59E0B', '#3B82F6', '#8B5CF6', '#10B981', '#EF4444']
     },
     xaxis: {
       categories: categories,
@@ -156,19 +178,21 @@ export function UserLoginChart({ data, loading = false, onTimeRangeChange }: Use
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
         `
         
-        const seriesNames = ['Advertisers', 'Publishers', 'Total']
-        const colors = ['#3B82F6', '#10B981', '#F59E0B']
+        const seriesNames = ['Requested', 'In Progress', 'Pending Approval', 'Completed', 'Rejected']
+        const colors = ['#F59E0B', '#3B82F6', '#8B5CF6', '#10B981', '#EF4444']
         
         series.forEach((s: any, idx: number) => {
           const value = s[dataPointIndex]
-          const secondaryTextColor = theme === 'dark' ? 'rgb(156, 163, 175)' : 'rgb(107, 114, 128)'
-          tooltipContent += `
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <div style="width: 0.75rem; height: 0.75rem; border-radius: 50%; background-color: ${colors[idx]};"></div>
-              <span style="font-size: 0.75rem; color: ${secondaryTextColor};">${seriesNames[idx]}:</span>
-              <span style="font-weight: 600; font-size: 0.875rem; color: ${textColor};">${value}</span>
-            </div>
-          `
+          if (value > 0) {
+            const secondaryTextColor = theme === 'dark' ? 'rgb(156, 163, 175)' : 'rgb(107, 114, 128)'
+            tooltipContent += `
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="width: 0.75rem; height: 0.75rem; border-radius: 50%; background-color: ${colors[idx]};"></div>
+                <span style="font-size: 0.75rem; color: ${secondaryTextColor};">${seriesNames[idx]}:</span>
+                <span style="font-weight: 600; font-size: 0.875rem; color: ${textColor};">${value}</span>
+              </div>
+            `
+          }
         })
         
         tooltipContent += `
@@ -199,7 +223,7 @@ export function UserLoginChart({ data, loading = false, onTimeRangeChange }: Use
         radius: 5,
         strokeWidth: 0,
         strokeColor: '#fff',
-        fillColors: ['#3B82F6', '#10B981', '#F59E0B'],
+        fillColors: ['#F59E0B', '#3B82F6', '#8B5CF6', '#10B981', '#EF4444'],
         offsetX: -2,
         offsetY: 0
       },
@@ -214,7 +238,7 @@ export function UserLoginChart({ data, loading = false, onTimeRangeChange }: Use
         highlightDataSeries: true
       }
     },
-    fill: chartType === 'line' ? {
+    fill: {
       type: 'gradient',
       gradient: {
         shadeIntensity: 1,
@@ -222,32 +246,16 @@ export function UserLoginChart({ data, loading = false, onTimeRangeChange }: Use
         opacityTo: 0.05,
         stops: [0, 50, 100]
       }
-    } : {
-      type: 'solid',
-      opacity: 0.8
     },
-    markers: chartType === 'line' ? {
-      size: 4,
+    markers: {
+      size: 0,
       strokeColors: '#fff',
       strokeWidth: 2,
       hover: {
         size: 8,
         sizeOffset: 2
       }
-    } : {
-      size: 0
     },
-    plotOptions: chartType === 'bar' ? {
-      bar: {
-        horizontal: false,
-        borderRadius: 4,
-        columnWidth: '55%',
-        distributed: false,
-        dataLabels: {
-          position: 'top'
-        }
-      }
-    } : {},
     grid: {
       borderColor: theme === 'dark' ? 'rgba(55, 65, 81, 0.5)' : 'rgba(229, 231, 235, 0.8)',
       strokeDashArray: 5,
@@ -269,26 +277,22 @@ export function UserLoginChart({ data, loading = false, onTimeRangeChange }: Use
         left: 0
       }
     },
-    colors: ['#3B82F6', '#10B981', '#F59E0B']
-  }
-
-  // Calculate totals for summary
-  const totals = {
-    advertisers: data.reduce((sum, item) => sum + item.advertisers, 0),
-    publishers: data.reduce((sum, item) => sum + item.publishers, 0),
-    total: data.reduce((sum, item) => sum + item.total, 0)
+    colors: ['#F59E0B', '#3B82F6', '#8B5CF6', '#10B981', '#EF4444'],
+    plotOptions: {
+      area: {
+        fillTo: 'end'
+      }
+    }
   }
 
   if (loading) {
     return (
-      <div className="kt-card h-full shadow-sm">
-        <div className="kt-card-header px-6 py-4 border-b border-border">
-          <div className="animate-pulse">
-            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
-          </div>
+      <div className="kt-card h-full">
+        <div className="kt-card-header">
+          <h3 className="kt-card-title">Order Status</h3>
         </div>
         <div className="kt-card-content flex flex-col justify-end items-stretch grow px-3 py-1">
-          <div className="animate-pulse h-[320px] bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div className="animate-pulse h-[300px] bg-gray-200 dark:bg-gray-700 rounded"></div>
         </div>
       </div>
     )
@@ -297,96 +301,100 @@ export function UserLoginChart({ data, loading = false, onTimeRangeChange }: Use
   return (
     <div className="kt-card h-full shadow-sm">
       <div className="kt-card-header px-6 py-4 border-b border-border">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="kt-card-title text-xl font-semibold text-foreground">User Logins</h3>
-            <p className="text-sm text-muted-foreground mt-1">Login activity trends over time</p>
-          </div>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Time Range Selector */}
-          <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
-            {(['7d', '30d', '90d'] as const).map((range) => (
-              <button
-                key={range}
-                onClick={() => {
-                  setTimeRange(range)
-                  onTimeRangeChange?.(range)
+        <div className="flex items-center justify-between">
+          <h3 className="kt-card-title text-xl font-semibold text-foreground">Order Status</h3>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <select
+                className="kt-select w-36 px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer appearance-none pr-8"
+                value={timeRange}
+                onChange={(e) => {
+                  const newRange = e.target.value as '7d' | '30d' | '90d'
+                  setTimeRange(newRange)
+                  onTimeRangeChange?.(newRange)
                 }}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${
-                  timeRange === range
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
               >
-                {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : '90 Days'}
-              </button>
-            ))}
-          </div>
-
-          {/* Chart Type Selector */}
-          <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
-            {(['line', 'bar'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setChartType(type)}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${
-                  chartType === type
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                {type === 'line' ? 'Line' : 'Bar'}
-              </button>
-            ))}
+                <option value="7d" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">7 days</option>
+                <option value="30d" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">1 month</option>
+                <option value="90d" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">3 months</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg 
+                  className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
       <div className="kt-card-content flex flex-col justify-end items-stretch grow px-3 py-1">
-        <div id="user_login_chart" className="w-full">
+        <div id="order_status_chart" className="w-full">
           {typeof window !== 'undefined' && (
             <Chart
               options={chartOptions}
               series={chartOptions.series}
-              type={chartType === 'line' ? 'line' : 'bar'}
+              type="area"
               height={320}
             />
           )}
         </div>
       </div>
-
+      
       {/* Summary Stats - Beautiful Footer */}
       <div className="kt-card-footer border-t border-border px-6 py-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-6 w-full">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#3B82F6] shadow-sm"></div>
-              <span className="text-sm font-medium text-muted-foreground">Advertisers</span>
+              <div className="w-3 h-3 rounded-full bg-[#F59E0B] shadow-sm"></div>
+              <span className="text-sm font-medium text-muted-foreground">Requested</span>
             </div>
             <div className="text-2xl font-bold text-foreground tracking-tight">
-              {totals.advertisers}
+              {totals.requested}
             </div>
           </div>
           
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#10B981] shadow-sm"></div>
-              <span className="text-sm font-medium text-muted-foreground">Publishers</span>
+              <div className="w-3 h-3 rounded-full bg-[#3B82F6] shadow-sm"></div>
+              <span className="text-sm font-medium text-muted-foreground">In Progress</span>
             </div>
             <div className="text-2xl font-bold text-foreground tracking-tight">
-              {totals.publishers}
+              {totals.inProgress}
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#F59E0B] shadow-sm"></div>
-              <span className="text-sm font-medium text-muted-foreground">Total</span>
+              <div className="w-3 h-3 rounded-full bg-[#8B5CF6] shadow-sm"></div>
+              <span className="text-sm font-medium text-muted-foreground">Pending Approval</span>
             </div>
             <div className="text-2xl font-bold text-foreground tracking-tight">
-              {totals.total}
+              {totals.advertiserApproval}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#10B981] shadow-sm"></div>
+              <span className="text-sm font-medium text-muted-foreground">Completed</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground tracking-tight">
+              {totals.completed}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#EF4444] shadow-sm"></div>
+              <span className="text-sm font-medium text-muted-foreground">Rejected</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground tracking-tight">
+              {totals.rejected}
             </div>
           </div>
         </div>

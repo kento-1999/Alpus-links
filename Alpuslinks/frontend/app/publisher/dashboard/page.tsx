@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { apiService } from '@/lib/api'
 import { useRouter } from 'next/navigation'
+import { OrderStatusChart } from '@/components/charts/OrderStatusChart'
 
 interface Website {
   _id: string
@@ -15,10 +16,26 @@ interface Website {
   createdAt: string
 }
 
+interface OrderStatusTrendData {
+  date: string
+  requested: number
+  inProgress: number
+  advertiserApproval: number
+  completed: number
+  rejected: number
+}
+
+interface OrderStatusTrendsResponse {
+  data: OrderStatusTrendData[]
+  period: string
+}
+
 export default function PublisherDashboardPage() {
   const [websites, setWebsites] = useState<Website[]>([])
   const [stats, setStats] = useState<any>(null)
+  const [orderStatusData, setOrderStatusData] = useState<OrderStatusTrendData[]>([])
   const [loading, setLoading] = useState(true)
+  const [orderLoading, setOrderLoading] = useState(true)
   const { user } = useAuth()
   const router = useRouter()
 
@@ -51,9 +68,27 @@ export default function PublisherDashboardPage() {
     }
   }
 
+  const loadOrderStatusData = async (period: '7d' | '30d' | '90d' = '30d') => {
+    try {
+      setOrderLoading(true)
+      const response = await apiService.getPublisherOrderStatsTrends(period)
+      const responseData = response.data as OrderStatusTrendsResponse
+      setOrderStatusData(responseData.data || [])
+    } catch (err) {
+      console.error('Failed to load order status data:', err)
+    } finally {
+      setOrderLoading(false)
+    }
+  }
+
+  const handleOrderTimeRangeChange = (timeRange: '7d' | '30d' | '90d') => {
+    loadOrderStatusData(timeRange)
+  }
+
   useEffect(() => {
     loadWebsites()
     loadStats()
+    loadOrderStatusData('30d')
   }, [user?.id])
 
   const handleAddWebsite = () => {
@@ -146,6 +181,15 @@ export default function PublisherDashboardPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Order Status Chart */}
+          <div className="mb-8">
+            <OrderStatusChart
+              data={orderStatusData}
+              loading={orderLoading}
+              onTimeRangeChange={handleOrderTimeRangeChange}
+            />
           </div>
 
           {/* Recent Activity */}

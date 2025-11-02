@@ -795,4 +795,380 @@ router.get('/stats/:userId', auth, async (req, res) => {
   }
 });
 
+// Get order statistics over time for admin dashboard chart
+router.get('/admin/stats/trends', auth, async (req, res) => {
+  try {
+    const userRole = req.user.role?.name;
+    
+    // Check if user is admin or super admin
+    if (!['admin', 'super admin'].includes(userRole?.toLowerCase())) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin privileges required.'
+      });
+    }
+
+    const { period = '30d' } = req.query;
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    switch (period) {
+      case '7d':
+        startDate.setDate(endDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(endDate.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(endDate.getDate() - 90);
+        break;
+      default:
+        startDate.setDate(endDate.getDate() - 30);
+    }
+
+    // Get orders grouped by date and status
+    const orderStats = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+            },
+            status: '$status'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.date',
+          stats: {
+            $push: {
+              status: '$_id.status',
+              count: '$count'
+            }
+          }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    // Format the data for chart
+    const formattedData = orderStats.map(item => {
+      const statsObj = {
+        date: item._id,
+        requested: 0,
+        inProgress: 0,
+        advertiserApproval: 0,
+        completed: 0,
+        rejected: 0
+      };
+
+      item.stats.forEach(stat => {
+        statsObj[stat.status] = stat.count;
+      });
+
+      return statsObj;
+    });
+
+    // Fill in missing dates with zeros
+    const allDates = [];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      allDates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    const finalData = allDates.map(date => {
+      const existing = formattedData.find(d => d.date === date);
+      if (existing) {
+        return existing;
+      }
+      return {
+        date,
+        requested: 0,
+        inProgress: 0,
+        advertiserApproval: 0,
+        completed: 0,
+        rejected: 0
+      };
+    });
+
+    res.json({
+      success: true,
+      data: finalData,
+      period
+    });
+
+  } catch (error) {
+    console.error('Error fetching order stats trends:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order statistics trends',
+      error: error.message
+    });
+  }
+});
+
+// Get order statistics over time for publisher dashboard chart
+router.get('/publisher/stats/trends', auth, async (req, res) => {
+  try {
+    const userRole = req.user.role?.name;
+    const userId = req.user._id;
+    
+    // Check if user is publisher
+    if (userRole?.toLowerCase() !== 'publisher') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Publisher privileges required.'
+      });
+    }
+
+    const { period = '30d' } = req.query;
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    switch (period) {
+      case '7d':
+        startDate.setDate(endDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(endDate.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(endDate.getDate() - 90);
+        break;
+      default:
+        startDate.setDate(endDate.getDate() - 30);
+    }
+
+    // Get orders grouped by date and status for this publisher
+    const orderStats = await Order.aggregate([
+      {
+        $match: {
+          publisherId: userId,
+          createdAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+            },
+            status: '$status'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.date',
+          stats: {
+            $push: {
+              status: '$_id.status',
+              count: '$count'
+            }
+          }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    // Format the data for chart
+    const formattedData = orderStats.map(item => {
+      const statsObj = {
+        date: item._id,
+        requested: 0,
+        inProgress: 0,
+        advertiserApproval: 0,
+        completed: 0,
+        rejected: 0
+      };
+
+      item.stats.forEach(stat => {
+        statsObj[stat.status] = stat.count;
+      });
+
+      return statsObj;
+    });
+
+    // Fill in missing dates with zeros
+    const allDates = [];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      allDates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    const finalData = allDates.map(date => {
+      const existing = formattedData.find(d => d.date === date);
+      if (existing) {
+        return existing;
+      }
+      return {
+        date,
+        requested: 0,
+        inProgress: 0,
+        advertiserApproval: 0,
+        completed: 0,
+        rejected: 0
+      };
+    });
+
+    res.json({
+      success: true,
+      data: finalData,
+      period
+    });
+
+  } catch (error) {
+    console.error('Error fetching publisher order stats trends:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order statistics trends',
+      error: error.message
+    });
+  }
+});
+
+// Get order statistics over time for advertiser dashboard chart
+router.get('/advertiser/stats/trends', auth, async (req, res) => {
+  try {
+    const userRole = req.user.role?.name;
+    const userId = req.user._id;
+    
+    // Check if user is advertiser
+    if (userRole?.toLowerCase() !== 'advertiser') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Advertiser privileges required.'
+      });
+    }
+
+    const { period = '30d' } = req.query;
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    switch (period) {
+      case '7d':
+        startDate.setDate(endDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(endDate.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(endDate.getDate() - 90);
+        break;
+      default:
+        startDate.setDate(endDate.getDate() - 30);
+    }
+
+    // Get orders grouped by date and status for this advertiser
+    const orderStats = await Order.aggregate([
+      {
+        $match: {
+          advertiserId: userId,
+          createdAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+            },
+            status: '$status'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.date',
+          stats: {
+            $push: {
+              status: '$_id.status',
+              count: '$count'
+            }
+          }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    // Format the data for chart
+    const formattedData = orderStats.map(item => {
+      const statsObj = {
+        date: item._id,
+        requested: 0,
+        inProgress: 0,
+        advertiserApproval: 0,
+        completed: 0,
+        rejected: 0
+      };
+
+      item.stats.forEach(stat => {
+        statsObj[stat.status] = stat.count;
+      });
+
+      return statsObj;
+    });
+
+    // Fill in missing dates with zeros
+    const allDates = [];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      allDates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    const finalData = allDates.map(date => {
+      const existing = formattedData.find(d => d.date === date);
+      if (existing) {
+        return existing;
+      }
+      return {
+        date,
+        requested: 0,
+        inProgress: 0,
+        advertiserApproval: 0,
+        completed: 0,
+        rejected: 0
+      };
+    });
+
+    res.json({
+      success: true,
+      data: finalData,
+      period
+    });
+
+  } catch (error) {
+    console.error('Error fetching advertiser order stats trends:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order statistics trends',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

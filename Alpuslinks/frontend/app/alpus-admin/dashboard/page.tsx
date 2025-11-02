@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { UserLoginChart } from '@/components/charts/UserLoginChart'
+import { OrderStatusChart } from '@/components/charts/OrderStatusChart'
 import { apiService } from '@/lib/api'
 import { Users, TrendingUp, UserPlus, Activity } from 'lucide-react'
 
@@ -45,9 +46,25 @@ interface UserStatsResponse {
   }>
 }
 
+interface OrderStatusTrendData {
+  date: string
+  requested: number
+  inProgress: number
+  advertiserApproval: number
+  completed: number
+  rejected: number
+}
+
+interface OrderStatusTrendsResponse {
+  data: OrderStatusTrendData[]
+  period: string
+}
+
 export default function AdminDashboardPage() {
   const [loginData, setLoginData] = useState<LoginTrendData[]>([])
+  const [orderStatusData, setOrderStatusData] = useState<OrderStatusTrendData[]>([])
   const [loading, setLoading] = useState(true)
+  const [orderLoading, setOrderLoading] = useState(true)
   const [summary, setSummary] = useState({
     totalAdvertisers: 0,
     totalPublishers: 0,
@@ -56,6 +73,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     loadDashboardData('30d')
+    loadOrderStatusData('30d')
   }, [])
 
   const loadDashboardData = async (period: string = '30d') => {
@@ -95,8 +113,25 @@ export default function AdminDashboardPage() {
     }
   }
 
+  const loadOrderStatusData = async (period: '7d' | '30d' | '90d' = '30d') => {
+    try {
+      setOrderLoading(true)
+      const response = await apiService.getOrderStatsTrends(period)
+      const responseData = response.data as OrderStatusTrendsResponse
+      setOrderStatusData(responseData.data || [])
+    } catch (err) {
+      console.error('Failed to load order status data:', err)
+    } finally {
+      setOrderLoading(false)
+    }
+  }
+
   const handleTimeRangeChange = (timeRange: '7d' | '30d' | '90d') => {
     loadDashboardData(timeRange)
+  }
+
+  const handleOrderTimeRangeChange = (timeRange: '7d' | '30d' | '90d') => {
+    loadOrderStatusData(timeRange)
   }
 
   return (
@@ -148,13 +183,25 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* User Login Chart */}
-          <div className="mb-8">
-            <UserLoginChart 
-              data={loginData} 
-              loading={loading} 
-              onTimeRangeChange={handleTimeRangeChange}
-            />
+          {/* Charts Grid - Equal width layout */}
+          <div className="grid lg:grid-cols-2 gap-5 lg:gap-7.5 items-stretch mb-8">
+            {/* User Login Chart - Takes 1/2 of full width */}
+            <div className="lg:col-span-1">
+              <UserLoginChart 
+                data={loginData} 
+                loading={loading} 
+                onTimeRangeChange={handleTimeRangeChange}
+              />
+            </div>
+            
+            {/* Order Status Chart - Takes 1/2 of full width */}
+            <div className="lg:col-span-1">
+              <OrderStatusChart
+                data={orderStatusData}
+                loading={orderLoading}
+                onTimeRangeChange={handleOrderTimeRangeChange}
+              />
+            </div>
           </div>
 
           {/* Additional Stats Grid */}
