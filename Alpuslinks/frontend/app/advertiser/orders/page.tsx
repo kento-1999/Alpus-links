@@ -222,7 +222,7 @@ export default function AdvertiserOrdersPage() {
   }
 
   // Handle view details - navigate to appropriate edit page
-  const handleViewDetails = (order: Order) => {
+  const handleViewDetails = async (order: Order) => {
     const viewOnlyParam = '?viewOnly=true'
     
     // For link insertion orders, the backend now populates postId for link insertion orders
@@ -249,8 +249,65 @@ export default function AdvertiserOrdersPage() {
         console.error('Link insertion order missing ID:', order)
         toast.error('No link insertion found to view')
       }
-    } else if (order.type === 'writingGuestPost' && order.postId) {
-      router.push(`/advertiser/posts/writing-gp/edit/${order.postId._id}${viewOnlyParam}`)
+    } else if (order.type === 'writingGuestPost') {
+      // Primary: use populated postId
+      if (order.postId?._id) {
+        const base = typeof window !== 'undefined' ? window.location.origin : ''
+        router.push(`${base}/advertiser/posts/writing-gp/edit/${order.postId._id}${viewOnlyParam}`)
+        return
+      }
+
+      // Fallback: fetch order details to try to get postId
+      try {
+        const response = await apiService.get(`/orders/${order._id}`) as any
+        const fetched = response?.data?.data?.order
+        const fetchedPostId = fetched?.postId?._id
+        if (fetchedPostId) {
+          const base = typeof window !== 'undefined' ? window.location.origin : ''
+          router.push(`${base}/advertiser/posts/writing-gp/edit/${fetchedPostId}${viewOnlyParam}`)
+          return
+        }
+        // Secondary fallback: attempt to locate a Writing + GP post by domain
+        try {
+          const postsResp = await apiService.getPosts()
+          const allPosts = (postsResp as any)?.data?.posts || []
+          const targetDomain = order.websiteId?.domain || ''
+          const normalize = (d: string) => {
+            if (!d) return ''
+            try {
+              const u = new URL(d.startsWith('http') ? d : `https://${d}`)
+              return u.hostname.replace('www.', '').toLowerCase()
+            } catch {
+              return d.replace('www.', '').toLowerCase()
+            }
+          }
+          const matchDomain = normalize(targetDomain)
+          const candidates = allPosts.filter((p: any) => {
+            const typeOk = p.postType === 'writing-gp' || (!p.postType && (!p.anchorPairs || p.anchorPairs.length === 0))
+            if (!typeOk) return false
+            const pDomain = normalize(p.domain || p.completeUrl || '')
+            return pDomain && matchDomain && pDomain === matchDomain
+          })
+          // Prefer pending/inProgress, then any
+          const prioritized = candidates.sort((a: any, b: any) => {
+            const score = (s: string) => (s === 'pending' ? 2 : s === 'inProgress' ? 1 : 0)
+            return score(b.status) - score(a.status)
+          })
+          const chosen = prioritized[0]
+          if (chosen?._id) {
+            const base = typeof window !== 'undefined' ? window.location.origin : ''
+            router.push(`${base}/advertiser/posts/writing-gp/edit/${chosen._id}${viewOnlyParam}`)
+            return
+          }
+          toast.error('No Writing + GP post found to view')
+        } catch (e2) {
+          console.error('Failed to locate Writing + GP post by domain:', e2)
+          toast.error('No Writing + GP post found to view')
+        }
+      } catch (e) {
+        console.error('Failed to fetch order details for Writing + GP:', e)
+        toast.error('Unable to load Writing + GP details')
+      }
     } else if (order.type === 'guestPost' && order.postId) {
       router.push(`/advertiser/posts/edit/${order.postId._id}${viewOnlyParam}`)
     } else {
