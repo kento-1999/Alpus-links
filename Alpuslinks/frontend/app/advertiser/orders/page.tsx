@@ -85,6 +85,8 @@ export default function AdvertiserOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  // Cache titles for Writing + GP posts by normalized domain
+  const [writingGpTitleByDomain, setWritingGpTitleByDomain] = useState<Record<string, string>>({})
 
   // Tab configuration
   const tabs: TabData[] = [
@@ -145,6 +147,49 @@ export default function AdvertiserOrdersPage() {
       console.error('Error fetching order stats:', err)
     }
   }
+
+  // Normalize a domain or URL to hostname without www
+  const normalizeDomain = (d: string) => {
+    if (!d) return ''
+    try {
+      const u = new URL(d.startsWith('http') ? d : `https://${d}`)
+      return u.hostname.replace('www.', '').toLowerCase()
+    } catch {
+      return d.replace('www.', '').toLowerCase()
+    }
+  }
+
+  // Fetch Writing + GP posts once and build a map domain -> preferred title
+  useEffect(() => {
+    const loadWritingGpTitles = async () => {
+      try {
+        const postsResp = await apiService.getPosts()
+        const allPosts = (postsResp as any)?.data?.posts || []
+        // Filter to writing-gp-like posts
+        const candidates = allPosts.filter((p: any) => p && (p.postType === 'writing-gp' || (!p.postType && (!p.anchorPairs || p.anchorPairs.length === 0))))
+        // Prefer pending/inProgress per domain
+        const score = (s: string) => (s === 'pending' ? 2 : s === 'inProgress' ? 1 : 0)
+        const byDomain: Record<string, any[]> = {}
+        candidates.forEach((p: any) => {
+          const d = normalizeDomain(p.domain || p.completeUrl || '')
+          if (!d) return
+          if (!byDomain[d]) byDomain[d] = []
+          byDomain[d].push(p)
+        })
+        const titleMap: Record<string, string> = {}
+        Object.keys(byDomain).forEach(d => {
+          const arr = byDomain[d].sort((a, b) => score(b.status) - score(a.status))
+          const chosen = arr[0]
+          if (chosen?.title) titleMap[d] = chosen.title
+        })
+        setWritingGpTitleByDomain(titleMap)
+      } catch (e) {
+        // Silent fail; UI will gracefully fallback
+        console.warn('Failed to load Writing + GP titles:', e)
+      }
+    }
+    loadWritingGpTitles()
+  }, [])
 
   // Update tab counts using stats
   const updateTabCounts = () => {
@@ -528,11 +573,28 @@ export default function AdvertiserOrdersPage() {
                                 <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                               </div>
                               <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {order.type === 'linkInsertion' ? 'Link' : 'Post'}
+                                {order.type === 'linkInsertion' ? 'Link' : 
+                                 order.type === 'writingGuestPost' ? 'Writing + GP' : 
+                                 'Post'}
                               </h4>
                             </div>
                             <div className="space-y-1">
-                              {order.postId ? (
+                              {order.type === 'writingGuestPost' ? (
+                                order.postId?.title ? (
+                                  <p className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2">
+                                    {order.postId.title}
+                                  </p>
+                                ) : (
+                                  (() => {
+                                    const title = writingGpTitleByDomain[normalizeDomain(order.websiteId?.domain || '')]
+                                    return title ? (
+                                      <p className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2">{title}</p>
+                                    ) : (
+                                      <p className="text-sm text-gray-500 dark:text-gray-500 italic">No content assigned</p>
+                                    )
+                                  })()
+                                )
+                              ) : order.postId ? (
                                 <p className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2">
                                   {order.postId.title}
                                 </p>
@@ -546,9 +608,7 @@ export default function AdvertiserOrdersPage() {
                                   </p>
                                 </>
                               ) : (
-                                <p className="text-sm text-gray-500 dark:text-gray-500 italic">
-                                  No content assigned
-                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-500 italic">No content assigned</p>
                               )}
                             </div>
                           </div>
