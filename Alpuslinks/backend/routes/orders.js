@@ -46,7 +46,7 @@ router.post('/', auth, async (req, res) => {
       };
 
       // Add post or link insertion reference based on type
-      if (type === 'guestPost' && selectedPostId) {
+      if ((type === 'guestPost' || type === 'writingGuestPost') && selectedPostId) {
         orderData.postId = selectedPostId;
       } else if (type === 'linkInsertion' && selectedPostId) {
         orderData.linkInsertionId = selectedPostId;
@@ -126,6 +126,7 @@ router.get('/publisher', auth, async (req, res) => {
 
     // For link insertion orders, linkInsertionId contains the Post ID
     // So we need to also populate postId for link insertion orders
+    // For writingGuestPost orders, try to find post if postId is missing
     for (let i = 0; i < orders.length; i++) {
       const order = orders[i];
       const rawOrder = rawOrders[i];
@@ -150,6 +151,46 @@ router.get('/publisher', auth, async (req, res) => {
           
           if (post) {
             order.postId = post;
+          }
+        }
+      } else if (order.type === 'writingGuestPost') {
+        // Check if postId exists but is not populated (just an ObjectId)
+        if (!order.postId && rawOrder?.postId) {
+          const postIdStr = rawOrder.postId instanceof mongoose.Types.ObjectId 
+            ? rawOrder.postId.toString() 
+            : rawOrder.postId;
+          
+          if (postIdStr) {
+            try {
+              const post = await Post.findById(postIdStr).select('title content');
+              if (post) {
+                order.postId = post;
+              }
+            } catch (error) {
+              console.error('Error fetching post by ID for writingGuestPost order:', error);
+            }
+          }
+        }
+        
+        // If still no postId, try to find by matching domain and advertiser (simplified for list view)
+        if (!order.postId) {
+          try {
+            const websiteDomain = order.websiteId?.domain || order.websiteId?.url || '';
+            const normalizedWebsiteDomain = websiteDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
+            
+            // Find most recent post for this advertiser with matching domain
+            const matchedPost = await Post.findOne({
+              advertiserId: order.advertiserId._id || order.advertiserId,
+              postType: 'writing-gp'
+            })
+              .select('title content')
+              .sort({ createdAt: -1 });
+            
+            if (matchedPost) {
+              order.postId = matchedPost;
+            }
+          } catch (error) {
+            console.error('Error finding post for writingGuestPost order in list:', error);
           }
         }
       }
@@ -213,6 +254,7 @@ router.get('/advertiser', auth, async (req, res) => {
 
     // For link insertion orders, linkInsertionId contains the Post ID
     // So we need to also populate postId for link insertion orders
+    // For writingGuestPost orders, try to find post if postId is missing
     for (let i = 0; i < orders.length; i++) {
       const order = orders[i];
       const rawOrder = rawOrders[i];
@@ -226,6 +268,46 @@ router.get('/advertiser', auth, async (req, res) => {
           const post = await Post.findById(postIdStr);
           if (post) {
             order.postId = post;
+          }
+        }
+      } else if (order.type === 'writingGuestPost') {
+        // Check if postId exists but is not populated (just an ObjectId)
+        if (!order.postId && rawOrder?.postId) {
+          const postIdStr = rawOrder.postId instanceof mongoose.Types.ObjectId 
+            ? rawOrder.postId.toString() 
+            : rawOrder.postId;
+          
+          if (postIdStr) {
+            try {
+              const post = await Post.findById(postIdStr).select('title content');
+              if (post) {
+                order.postId = post;
+              }
+            } catch (error) {
+              console.error('Error fetching post by ID for writingGuestPost order:', error);
+            }
+          }
+        }
+        
+        // If still no postId, try to find by matching domain and advertiser (simplified for list view)
+        if (!order.postId) {
+          try {
+            const websiteDomain = order.websiteId?.domain || order.websiteId?.url || '';
+            const normalizedWebsiteDomain = websiteDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
+            
+            // Find most recent post for this advertiser with matching domain
+            const matchedPost = await Post.findOne({
+              advertiserId: order.advertiserId._id || order.advertiserId,
+              postType: 'writing-gp'
+            })
+              .select('title content')
+              .sort({ createdAt: -1 });
+            
+            if (matchedPost) {
+              order.postId = matchedPost;
+            }
+          } catch (error) {
+            console.error('Error finding post for writingGuestPost order in list:', error);
           }
         }
       }
@@ -562,7 +644,7 @@ router.get('/:orderId', auth, async (req, res) => {
       .populate('advertiserId', 'firstName lastName email company')
       .populate('publisherId', 'firstName lastName email')
       .populate('websiteId', 'domain url')
-      .populate('postId', 'title content metaTitle metaDescription keywords completeUrl anchorPairs')
+      .populate('postId', 'title content metaTitle metaDescription keywords completeUrl anchorPairs description domain slug')
       .populate('linkInsertionId', 'anchorText anchorUrl');
 
     if (!order) {
@@ -602,7 +684,7 @@ router.get('/:orderId', auth, async (req, res) => {
         if (postIdStr) {
           // This ID is actually a Post ID, so populate it as postId
           const post = await Post.findById(postIdStr)
-            .select('title content metaTitle metaDescription keywords completeUrl anchorPairs');
+            .select('title content metaTitle metaDescription keywords completeUrl anchorPairs description domain slug');
           
           console.log('Found post for link insertion:', post ? post._id : 'not found');
           
@@ -618,6 +700,97 @@ router.get('/:orderId', auth, async (req, res) => {
           hasLinkInsertionId: !!rawOrder?.linkInsertionId,
           rawOrderLinkInsertionId: rawOrder?.linkInsertionId
         });
+      }
+    }
+    
+    // For writingGuestPost orders, try to find post if postId is missing or not populated
+    if (order.type === 'writingGuestPost') {
+      // Check if postId exists but is not populated (just an ObjectId)
+      let postIdStr = null;
+      if (!order.postId && rawOrder?.postId) {
+        // postId exists in raw order but wasn't populated
+        if (rawOrder.postId instanceof mongoose.Types.ObjectId) {
+          postIdStr = rawOrder.postId.toString();
+        } else if (typeof rawOrder.postId === 'string') {
+          postIdStr = rawOrder.postId;
+        }
+        
+        if (postIdStr) {
+          try {
+            const post = await Post.findById(postIdStr)
+              .select('title content metaTitle metaDescription keywords completeUrl anchorPairs description domain slug');
+            if (post) {
+              order.postId = post;
+              console.log('Found and populated post for writingGuestPost order:', {
+                orderId: order._id,
+                postId: post._id,
+                title: post.title
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching post by ID for writingGuestPost order:', error);
+          }
+        }
+      }
+      
+      // If still no postId, try to find by matching domain and advertiser
+      if (!order.postId) {
+        try {
+          // Get website domain for matching
+          const websiteDomain = order.websiteId?.domain || order.websiteId?.url || '';
+          const normalizedWebsiteDomain = websiteDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
+          
+          // Find posts by matching advertiser, postType, and domain
+          const matchingPosts = await Post.find({
+            advertiserId: order.advertiserId._id || order.advertiserId,
+            postType: 'writing-gp'
+          })
+            .select('title content metaTitle metaDescription keywords completeUrl anchorPairs description domain slug')
+            .sort({ createdAt: -1 }) // Get most recent first
+            .limit(10);
+          
+          // Try to find exact domain match first
+          let matchedPost = matchingPosts.find(post => {
+            if (post.domain) {
+              const postDomain = post.domain.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
+              return postDomain === normalizedWebsiteDomain;
+            }
+            if (post.completeUrl) {
+              try {
+                const urlObj = new URL(post.completeUrl.startsWith('http') ? post.completeUrl : `https://${post.completeUrl}`);
+                const postDomain = urlObj.hostname.replace(/^www\./, '').toLowerCase();
+                return postDomain === normalizedWebsiteDomain;
+              } catch (e) {
+                return false;
+              }
+            }
+            return false;
+          });
+          
+          // If no exact match, use the most recent post for this advertiser
+          if (!matchedPost && matchingPosts.length > 0) {
+            matchedPost = matchingPosts[0];
+          }
+          
+          if (matchedPost) {
+            console.log('Found post for writingGuestPost order by domain matching:', {
+              orderId: order._id,
+              postId: matchedPost._id,
+              title: matchedPost.title,
+              domain: matchedPost.domain || matchedPost.completeUrl
+            });
+            order.postId = matchedPost;
+          } else {
+            console.log('No post found for writingGuestPost order:', {
+              orderId: order._id,
+              advertiserId: order.advertiserId._id || order.advertiserId,
+              websiteDomain: normalizedWebsiteDomain,
+              searchedPosts: matchingPosts.length
+            });
+          }
+        } catch (error) {
+          console.error('Error finding post for writingGuestPost order:', error);
+        }
       }
     }
 
