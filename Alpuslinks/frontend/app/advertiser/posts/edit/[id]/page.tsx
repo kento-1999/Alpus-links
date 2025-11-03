@@ -1135,7 +1135,7 @@ export default function EditPostPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  {!isViewOnly && !(['inProgress', 'approved'].includes(postStatus)) && (
+                  {!isViewOnly && !(['request','inProgress','approved','rejected','completed'].includes(postStatus)) && (
                     <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/30 dark:border-gray-700/50 overflow-hidden hover:shadow-3xl transition-all duration-300">
                       <div className="p-4 space-y-3">
                         <button

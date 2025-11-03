@@ -41,12 +41,58 @@ export default function EditWritingGPPage() {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [postStatus, setPostStatus] = useState<string>('draft')
+  const [orderStatus, setOrderStatus] = useState<string | null>(null)
   const [websites, setWebsites] = useState<any[]>([])
   const [loadingWebsites, setLoadingWebsites] = useState(false)
   const [showDomainDropdown, setShowDomainDropdown] = useState(false)
   const [domainSearchTerm, setDomainSearchTerm] = useState('')
   const [domainError, setDomainError] = useState('')
   const [isDomainFromCart, setIsDomainFromCart] = useState(false)
+
+  // Fetch orders to check if this post is associated with any orders
+  const fetchOrderStatus = async (domain: string) => {
+    try {
+      // Fetch all advertiser orders to find orders associated with this post
+      const response = await apiService.getAdvertiserOrders({})
+      
+      // Handle different API response structures
+      const orders = (response.data as any)?.data?.orders || (response.data as any)?.orders || []
+      
+      // Find orders where postId matches this post OR domain matches for writing-gp orders
+      const relatedOrder = orders.find((order: any) => {
+        const orderPostId = order.postId?._id || order.postId
+        const isPostMatch = orderPostId === postId
+        
+        // For writing-gp orders, also check by domain
+        const websiteDomain = order.websiteId?.domain || ''
+        const normalizedWebsiteDomain = websiteDomain.toLowerCase().replace('www.', '')
+        const normalizedFormDomain = domain.toLowerCase().replace('www.', '')
+        const isDomainMatch = order.type === 'writingGuestPost' && domain && 
+          normalizedWebsiteDomain === normalizedFormDomain
+        
+        return isPostMatch || isDomainMatch
+      })
+      
+      if (relatedOrder) {
+        setOrderStatus(relatedOrder.status)
+      }
+    } catch (error) {
+      console.error('Error fetching order status:', error)
+      // Don't show error to user, just silently fail
+    }
+  }
+
+  // Check if buttons should be hidden based on order status
+  const shouldHideButtons = () => {
+    if (isViewOnly) return true
+    // Check both post status and order status
+    const statusToCheck = orderStatus || postStatus
+    if (!statusToCheck) return false
+    // Hide buttons when status is: requested, inProgress, rejected, or completed
+    // Also hide for 'request' (display status) and 'approved' (post status)
+    const hideStatuses = ['requested', 'request', 'inProgress', 'rejected', 'completed', 'approved']
+    return hideStatuses.includes(statusToCheck)
+  }
 
   // Load post data
   useEffect(() => {
@@ -78,6 +124,9 @@ export default function EditWritingGPPage() {
           anchorPairs: post.anchorPairs || [{ text: '', link: '' }]
         })
         setPostStatus(post.status || 'draft')
+        
+        // Check for associated orders after post is loaded
+        await fetchOrderStatus(domain)
       } catch (error: any) {
         console.error('Load error:', error)
         toast.error(error?.message || 'Failed to load post')
@@ -449,6 +498,7 @@ export default function EditWritingGPPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Anchor Pairs</label>
+                {!shouldHideButtons() && (
                 <button
                   type="button"
                   onClick={addAnchorPair}
@@ -457,6 +507,7 @@ export default function EditWritingGPPage() {
                   <span>+</span>
                   Add Anchor Pair
                 </button>
+                )}
               </div>
               
               {formData.anchorPairs.length === 0 ? (
@@ -505,7 +556,7 @@ export default function EditWritingGPPage() {
               )}
             </div>
 
-            {!isViewOnly && !(['inProgress', 'approved'].includes(postStatus)) && (
+            {!shouldHideButtons() && (
               <div className="flex gap-3">
                 <button onClick={saveDraft} disabled={saving} className="flex-1 inline-flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white py-3 rounded-xl disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
                   <Save className="w-4 h-4" />

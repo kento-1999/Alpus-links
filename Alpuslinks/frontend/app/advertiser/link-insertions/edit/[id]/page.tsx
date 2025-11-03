@@ -440,7 +440,7 @@ export default function EditLinkInsertionPage() {
               )}
 
               {/* Action Buttons */}
-              {!isViewOnly && (
+              {!isViewOnly && !(['request','inProgress','approved','rejected','completed'].includes(String(formData.status || '')))) && (
                 <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                   <button
                     onClick={handleSaveDraft}
@@ -450,16 +450,14 @@ export default function EditLinkInsertionPage() {
                     <Save className="w-5 h-5" />
                     <span>{saving ? 'Saving...' : 'Update Draft'}</span>
                   </button>
-                  {formData.status !== 'approved' && (
-                    <button
-                      onClick={handleSubmit}
-                      disabled={saving}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50"
-                    >
-                      <Send className="w-5 h-5" />
-                      <span>{saving ? 'Submitting...' : 'Send to Moderation'}</span>
-                    </button>
-                  )}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={saving}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50"
+                  >
+                    <Send className="w-5 h-5" />
+                    <span>{saving ? 'Submitting...' : 'Send to Moderation'}</span>
+                  </button>
                 </div>
               )}
               
