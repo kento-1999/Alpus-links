@@ -167,6 +167,12 @@ export default function AdminOrdersPage() {
   const handleStatusUpdate = async () => {
     if (!orderToUpdate || !newStatus) return
 
+    // Validate that note is provided
+    if (!statusNote || !statusNote.trim()) {
+      toast.error('Note is required')
+      return
+    }
+
     try {
       const response = await apiService.updateOrderStatusByAdmin(
         orderToUpdate._id,
@@ -796,15 +802,21 @@ export default function AdminOrdersPage() {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Note (Optional)
+                    Note <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={statusNote}
                     onChange={(e) => setStatusNote(e.target.value)}
                     placeholder="Add a note about this status change..."
                     rows={3}
+                    required
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
+                  {!statusNote || !statusNote.trim() ? (
+                    <p className="mt-1 text-xs text-red-500">
+                      Note is required
+                    </p>
+                  ) : null}
                 </div>
 
                 {newStatus === 'rejected' && (
@@ -837,7 +849,8 @@ export default function AdminOrdersPage() {
                   </button>
                   <button
                     onClick={handleStatusUpdate}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                    disabled={!statusNote || !statusNote.trim()}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
                   >
                     Update Status
                   </button>

@@ -656,6 +656,15 @@ router.patch('/admin/:orderId', auth, async (req, res) => {
     // Update order status
     await order.updateStatus(status, note, userId);
 
+    // Save note (statusNote) to OrderMeta as internalNote
+    if (note && note.trim()) {
+      await OrderMeta.findOneAndUpdate(
+        { orderId: orderId, meta_property: 'internalNote' },
+        { meta_value: note },
+        { upsert: true, new: true }
+      );
+    }
+
     // If rejected, save rejection reason in OrderMeta
     if (status === 'rejected' && rejectionReason) {
       // Find existing rejection reason meta or create new one
