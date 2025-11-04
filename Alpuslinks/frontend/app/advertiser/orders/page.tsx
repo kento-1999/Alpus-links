@@ -323,7 +323,7 @@ export default function AdvertiserOrdersPage() {
       }
       
       if (targetId) {
-        router.push(`/advertiser/posts/link-insertion/edit/${targetId}${viewOnlyParam}`)
+        router.push(`/advertiser/project/link-insertion/edit/${targetId}${viewOnlyParam}`)
       } else {
         console.error('Link insertion order missing ID:', order)
         toast.error('No link insertion found to view')
@@ -332,7 +332,7 @@ export default function AdvertiserOrdersPage() {
       // Primary: use populated postId
       if (order.postId?._id) {
         const base = typeof window !== 'undefined' ? window.location.origin : ''
-        router.push(`${base}/advertiser/posts/writing-gp/edit/${order.postId._id}${viewOnlyParam}`)
+        router.push(`${base}/advertiser/project/writing-gp/edit/${order.postId._id}${viewOnlyParam}`)
         return
       }
 
@@ -343,7 +343,7 @@ export default function AdvertiserOrdersPage() {
         const fetchedPostId = fetched?.postId?._id
         if (fetchedPostId) {
           const base = typeof window !== 'undefined' ? window.location.origin : ''
-          router.push(`${base}/advertiser/posts/writing-gp/edit/${fetchedPostId}${viewOnlyParam}`)
+          router.push(`${base}/advertiser/project/writing-gp/edit/${fetchedPostId}${viewOnlyParam}`)
           return
         }
         // Secondary fallback: attempt to locate a Writing + GP post by domain
@@ -375,7 +375,7 @@ export default function AdvertiserOrdersPage() {
           const chosen = prioritized[0]
           if (chosen?._id) {
             const base = typeof window !== 'undefined' ? window.location.origin : ''
-            router.push(`${base}/advertiser/posts/writing-gp/edit/${chosen._id}${viewOnlyParam}`)
+            router.push(`${base}/advertiser/project/writing-gp/edit/${chosen._id}${viewOnlyParam}`)
             return
           }
           toast.error('No Writing + GP post found to view')
@@ -388,7 +388,7 @@ export default function AdvertiserOrdersPage() {
         toast.error('Unable to load Writing + GP details')
       }
     } else if (order.type === 'guestPost' && order.postId) {
-      router.push(`/advertiser/posts/edit/${order.postId._id}${viewOnlyParam}`)
+      router.push(`/advertiser/project/post/edit/${order.postId._id}${viewOnlyParam}`)
     } else {
       toast.error('Unable to view details for this order type')
     }

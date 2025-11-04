@@ -369,17 +369,17 @@ export default function AdvertiserCartPage() {
 
   const handleAddGP = (websiteId: string, domain: string, price: number) => {
     // Navigate to create post page with the specific domain
-    router.push(`/advertiser/posts/create?domain=${encodeURIComponent(domain)}`)
+    router.push(`/advertiser/project/post/create?domain=${encodeURIComponent(domain)}`)
   }
 
   const handleAddLI = (websiteId: string, domain: string, price: number) => {
     // Navigate to create link insertion page with domain parameter
-    router.push(`/advertiser/posts/link-insertion/create?domain=${encodeURIComponent(domain)}`)
+    router.push(`/advertiser/project/link-insertion/create?domain=${encodeURIComponent(domain)}`)
   }
 
   const handleAddWritingGP = (websiteId: string, domain: string, price: number) => {
     // Navigate to create writing + GP page with cart flag and domain
-    router.push(`/advertiser/posts/writing-gp?from=cart&domain=${encodeURIComponent(domain)}`)
+    router.push(`/advertiser/project/writing-gp?from=cart&domain=${encodeURIComponent(domain)}`)
   }
 
   return (

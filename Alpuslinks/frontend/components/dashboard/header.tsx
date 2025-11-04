@@ -15,7 +15,7 @@ import {
   Moon
 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
-import { getRoleName } from '@/lib/roleUtils'
+import { getRoleName, getRoleNameLowercase } from '@/lib/roleUtils'
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar'
 import { ShoppingCart } from 'lucide-react'
 import { useAppSelector } from '@/hooks/redux'
@@ -53,18 +53,70 @@ export function Header() {
     const segments = pathname.split('/').filter(Boolean)
     const breadcrumbs: Array<{ label: string; href: string; isLast: boolean }> = []
     
-    // Add home
-    breadcrumbs.push({ label: 'Home', href: '/', isLast: segments.length === 0 })
+    // Helper function to check if a segment looks like an ID (MongoDB ObjectId or UUID)
+    const isIdSegment = (segment: string): boolean => {
+      // MongoDB ObjectId: 24 hex characters
+      if (/^[0-9a-fA-F]{24}$/.test(segment)) return true
+      // UUID format: 8-4-4-4-12 hex characters
+      if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i.test(segment)) return true
+      return false
+    }
     
-    // Add path segments
+    // Helper function to get dashboard path based on user role
+    const getDashboardPath = (): string => {
+      const roleName = getRoleNameLowercase(user?.role)
+      switch (roleName) {
+        case 'super admin':
+        case 'admin':
+          return '/alpus-admin/dashboard'
+        case 'publisher':
+          return '/publisher/dashboard'
+        case 'advertiser':
+          return '/advertiser/dashboard'
+        case 'supportor':
+          return '/supportor/account'
+        default:
+          return '/'
+      }
+    }
+    
+    // Add home - redirect to dashboard based on role
+    breadcrumbs.push({ label: 'Home', href: getDashboardPath(), isLast: segments.length === 0 })
+    
+    // Add path segments (skip ID segments)
     let currentPath = ''
     segments.forEach((segment, index) => {
+      // Skip displaying ID segments in breadcrumb
+      if (isIdSegment(segment)) {
+        currentPath += `/${segment}`
+        return
+      }
+      
       currentPath += `/${segment}`
-      const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace('-', ' ')
+      const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+      
+      // Check if this is the last non-ID segment
+      const remainingSegments = segments.slice(index + 1)
+      const hasNonIdSegmentsAfter = remainingSegments.some(s => !isIdSegment(s))
+      const isLast = !hasNonIdSegmentsAfter
+      
+      // Determine href - redirect post, link insertion, and writing gp to project management
+      // and redirect advertiser to dashboard
+      let href = currentPath
+      if (segment === 'advertiser') {
+        href = '/advertiser/dashboard'
+      } else if (segment === 'post' || segment === 'link-insertion' || segment === 'writing-gp') {
+        // Check if we're in the advertiser section
+        const advertiserIndex = segments.findIndex(s => s === 'advertiser')
+        if (advertiserIndex !== -1) {
+          href = '/advertiser/project'
+        }
+      }
+      
       breadcrumbs.push({ 
         label, 
-        href: currentPath,
-        isLast: index === segments.length - 1
+        href,
+        isLast
       })
     })
     

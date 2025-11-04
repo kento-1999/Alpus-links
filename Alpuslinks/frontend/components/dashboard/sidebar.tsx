@@ -120,9 +120,9 @@ export function Sidebar() {
         href: '/advertiser/websites'
       })
       userChildren.push({
-        name: 'Post Management',
+        name: 'Project Management',
         icon: FileText,
-        href: '/advertiser/posts'
+        href: '/advertiser/project'
       })
       userChildren.push({
         name: 'My Orders',
