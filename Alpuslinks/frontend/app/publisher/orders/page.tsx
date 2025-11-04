@@ -9,6 +9,7 @@ import {
   XCircle, 
   AlertCircle,
   User,
+  UserCheck,
   Calendar,
   DollarSign,
   Globe,
@@ -93,6 +94,7 @@ export default function PublisherTaskManagementPage() {
     { id: 'all', label: 'All', count: 0, icon: ClipboardList, color: 'blue' },
     { id: 'requested', label: 'Request for Advertiser', count: 0, icon: AlertCircle, color: 'yellow' },
     { id: 'inProgress', label: 'In Progress', count: 0, icon: Clock, color: 'blue' },
+    { id: 'advertiserApproval', label: 'Advertiser Approval', count: 0, icon: UserCheck, color: 'purple' },
     { id: 'completed', label: 'Completed', count: 0, icon: CheckCircle, color: 'green' },
     { id: 'rejected', label: 'Rejected', count: 0, icon: XCircle, color: 'red' }
   ]
@@ -198,6 +200,7 @@ export default function PublisherTaskManagementPage() {
         const countsByStatus: Record<string, number> = {
           requested: 0,
           inProgress: 0,
+          advertiserApproval: 0,
           completed: 0,
           rejected: 0
         }
