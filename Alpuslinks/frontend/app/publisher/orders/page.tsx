@@ -652,6 +652,21 @@ export default function PublisherTaskManagementPage() {
                       </div>
                     </div>
 
+                    {/* Rejection Reason */}
+                    {task.status === 'rejected' && task.rejectionReason && (
+                      <div className="mb-6">
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                          <div className="flex items-start space-x-2">
+                            <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <h5 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Rejection Reason</h5>
+                              <p className="text-sm text-red-700 dark:text-red-400">{task.rejectionReason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Bottom Actions Bar */}
                     <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                       <div className="flex items-center space-x-4">

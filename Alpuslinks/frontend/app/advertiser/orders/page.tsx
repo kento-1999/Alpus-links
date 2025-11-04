@@ -87,6 +87,9 @@ export default function AdvertiserOrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   // Cache titles for Writing + GP posts by normalized domain
   const [writingGpTitleByDomain, setWritingGpTitleByDomain] = useState<Record<string, string>>({})
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [orderToReject, setOrderToReject] = useState<string | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
 
   // Tab configuration
   const tabs: TabData[] = [
@@ -246,23 +249,54 @@ export default function AdvertiserOrdersPage() {
   }
 
   // Handle order approval/rejection
-  const handleOrderAction = async (orderId: string, action: 'approve' | 'reject') => {
+  const handleOrderAction = async (orderId: string, action: 'approve' | 'reject', rejectionReason?: string) => {
     try {
       const newStatus = action === 'approve' ? 'completed' : 'rejected'
       const note = action === 'approve' ? 'Order approved by advertiser' : 'Order rejected by advertiser'
       
-      const response = await apiService.updateOrderStatus(orderId, newStatus, note)
+      const response = await apiService.updateOrderStatus(orderId, newStatus, note, rejectionReason)
       
       if ((response.data as any)?.success) {
         toast.success(`Order ${action === 'approve' ? 'approved' : 'rejected'} successfully`)
         fetchOrders()
         fetchCounts()
+        // Close modal if it was open
+        if (action === 'reject') {
+          setShowRejectModal(false)
+          setOrderToReject(null)
+          setRejectionReason('')
+        }
       } else {
         throw new Error((response.data as any)?.message || 'Failed to update order status')
       }
     } catch (error) {
       console.error('Error updating order status:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to update order status')
+    }
+  }
+
+  // Open reject modal
+  const openRejectModal = (orderId: string) => {
+    setOrderToReject(orderId)
+    setShowRejectModal(true)
+    setRejectionReason('')
+  }
+
+  // Close reject modal
+  const closeRejectModal = () => {
+    setShowRejectModal(false)
+    setOrderToReject(null)
+    setRejectionReason('')
+  }
+
+  // Confirm reject order
+  const confirmRejectOrder = () => {
+    if (orderToReject) {
+      if (!rejectionReason.trim()) {
+        toast.error('Please provide a reason for rejection')
+        return
+      }
+      handleOrderAction(orderToReject, 'reject', rejectionReason)
     }
   }
 
@@ -647,7 +681,7 @@ export default function AdvertiserOrdersPage() {
                                     <span>Approve Order</span>
                                   </button>
                                   <button
-                                    onClick={() => handleOrderAction(order._id, 'reject')}
+                                    onClick={() => openRejectModal(order._id)}
                                     className="w-full px-4 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 shadow-sm"
                                   >
                                     <XCircle className="w-4 h-4" />
@@ -701,6 +735,68 @@ export default function AdvertiserOrdersPage() {
             )}
         </div>
       </div>
+
+      {/* Reject Order Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700">
+            <div className="p-6">
+              {/* Modal Header */}
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Reject Order
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Please provide a reason for rejection
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="mb-6">
+                <label htmlFor="rejectionReason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Rejection Reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="rejectionReason"
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Enter the reason for rejecting this order..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                />
+                {rejectionReason.trim().length === 0 && (
+                  <p className="mt-1 text-xs text-red-500">
+                    A rejection reason is required
+                  </p>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={closeRejectModal}
+                  className="flex-1 px-4 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRejectOrder}
+                  disabled={!rejectionReason.trim()}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600 flex items-center justify-center space-x-2"
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>Reject Order</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   )
 }
