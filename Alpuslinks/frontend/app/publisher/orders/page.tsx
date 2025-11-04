@@ -79,6 +79,9 @@ export default function PublisherTaskManagementPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [orderToReject, setOrderToReject] = useState<string | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
   
   // Handle view details - navigate to order details page
   const handleViewDetails = (task: Task) => {
@@ -151,6 +154,30 @@ export default function PublisherTaskManagementPage() {
       return
     }
     handleOrderStatusUpdate(orderId, 'rejected', 'Order rejected', rejectionReason)
+    setShowRejectModal(false)
+    setOrderToReject(null)
+    setRejectionReason('')
+  }
+
+  // Open reject modal
+  const openRejectModal = (orderId: string) => {
+    setOrderToReject(orderId)
+    setShowRejectModal(true)
+    setRejectionReason('')
+  }
+
+  // Close reject modal
+  const closeRejectModal = () => {
+    setShowRejectModal(false)
+    setOrderToReject(null)
+    setRejectionReason('')
+  }
+
+  // Confirm reject order
+  const confirmRejectOrder = () => {
+    if (orderToReject) {
+      handleRejectOrder(orderToReject, rejectionReason)
+    }
   }
 
   // Fetch counts by fetching all publisher orders and counting by status
@@ -259,11 +286,8 @@ export default function PublisherTaskManagementPage() {
       if (action === 'accept') {
         handleAcceptOrder(taskId)
       } else if (action === 'reject') {
-        // For reject, we'll show a modal or prompt for rejection reason
-        const reason = prompt('Please provide a reason for rejection:')
-        if (reason) {
-          handleRejectOrder(taskId, reason)
-        }
+        // Open reject modal
+        openRejectModal(taskId)
       } else {
         console.log(`Performing ${action} on task ${taskId}`)
         toast.success(`Task ${action} successfully`)
@@ -601,12 +625,7 @@ export default function PublisherTaskManagementPage() {
                                   <span>Accept Order</span>
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    const reason = prompt('Please provide a reason for rejection:')
-                                    if (reason) {
-                                      handleRejectOrder(task._id, reason)
-                                    }
-                                  }}
+                                  onClick={() => openRejectModal(task._id)}
                                   className="w-full px-4 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 shadow-sm"
                                 >
                                   <XCircle className="w-4 h-4" />
@@ -659,6 +678,68 @@ export default function PublisherTaskManagementPage() {
           )}
         </div>
       </div>
+
+      {/* Reject Order Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700">
+            <div className="p-6">
+              {/* Modal Header */}
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Reject Order
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Please provide a reason for rejection
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="mb-6">
+                <label htmlFor="rejectionReason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Rejection Reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="rejectionReason"
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Enter the reason for rejecting this order..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                />
+                {rejectionReason.trim().length === 0 && (
+                  <p className="mt-1 text-xs text-red-500">
+                    A rejection reason is required
+                  </p>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={closeRejectModal}
+                  className="flex-1 px-4 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRejectOrder}
+                  disabled={!rejectionReason.trim()}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600 flex items-center justify-center space-x-2"
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>Reject Order</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   )
 }

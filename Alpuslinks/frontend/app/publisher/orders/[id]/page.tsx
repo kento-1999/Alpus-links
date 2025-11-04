@@ -3,7 +3,7 @@
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Eye, Code, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Eye, Code, Copy, Check, Send } from 'lucide-react'
 import { apiService } from '@/lib/api'
 import toast from 'react-hot-toast'
 import RichTextEditor from '@/components/editor/RichTextEditor'
@@ -44,6 +44,7 @@ export default function PublisherOrderDetailPage() {
   const [editorMode, setEditorMode] = useState<'visual' | 'html'>('visual')
   const [wordCount, setWordCount] = useState(0)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [submittingApproval, setSubmittingApproval] = useState(false)
 
   // Copy to clipboard function with fallback
   const copyToClipboard = async (text: string, id: string) => {
@@ -425,6 +426,42 @@ export default function PublisherOrderDetailPage() {
     loadOrder()
   }, [orderId, router])
 
+  // Handle sending order for approval
+  const handleForApproval = async () => {
+    if (!orderId) return
+    
+    try {
+      setSubmittingApproval(true)
+      const response = await apiService.updateOrderStatus(orderId, 'advertiserApproval', 'Order sent for advertiser approval')
+      
+      if ((response.data as any)?.success) {
+        toast.success('Order sent for approval successfully')
+        // Reload order data to reflect the status change
+        const orderResponse = await apiService.getOrder(orderId)
+        
+        let orderData = null
+        if ((orderResponse.data as any)?.data?.order) {
+          orderData = (orderResponse.data as any).data.order
+        } else if ((orderResponse.data as any)?.order) {
+          orderData = (orderResponse.data as any).order
+        } else if ((orderResponse.data as any)?.success && (orderResponse.data as any)?.data) {
+          orderData = (orderResponse.data as any).data.order || (orderResponse.data as any).data
+        }
+        
+        if (orderData) {
+          setOrder(orderData)
+        }
+      } else {
+        throw new Error((response.data as any)?.message || 'Failed to send order for approval')
+      }
+    } catch (error: any) {
+      console.error('Error sending for approval:', error)
+      toast.error(error?.message || 'Failed to send order for approval')
+    } finally {
+      setSubmittingApproval(false)
+    }
+  }
+
   if (loading) {
     return (
       <ProtectedRoute allowedRoles={["publisher"]}>
@@ -507,11 +544,23 @@ export default function PublisherOrderDetailPage() {
         <div className="w-full max-w-none px-4 sm:px-6 lg:px-8 py-8">
           {/* Header - Simple for Writing + GP, Complex for Guest Post */}
           {order?.type === 'writingGuestPost' ? (
-            <div className="flex items-center space-x-3 mb-8">
-              <button onClick={() => router.back()} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Order Detail</h1>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center space-x-3">
+                <button onClick={() => router.back()} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                </button>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Order Detail</h1>
+              </div>
+              {order?.status === 'inProgress' && (
+                <button
+                  onClick={handleForApproval}
+                  disabled={submittingApproval}
+                  className="flex items-center space-x-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{submittingApproval ? 'Sending...' : 'For Approval'}</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="mb-10">
@@ -530,6 +579,16 @@ export default function PublisherOrderDetailPage() {
                     {order?.type === 'guestPost' ? 'View guest post details' : 'View link insertion details'}
                   </p>
                 </div>
+                {order?.status === 'inProgress' && (
+                  <button
+                    onClick={handleForApproval}
+                    disabled={submittingApproval}
+                    className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>{submittingApproval ? 'Sending...' : 'For Approval'}</span>
+                  </button>
+                )}
               </div>
               
               {/* Progress Indicator */}

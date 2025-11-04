@@ -2,11 +2,56 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
+const OrderMeta = require('../models/OrderMeta');
 const Post = require('../models/Post');
 const LinkInsertion = require('../models/LinkInsertion');
 const Website = require('../models/Website');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+
+// Helper function to attach order meta to orders
+async function attachOrderMeta(orders) {
+  // Handle both single order and array of orders
+  const ordersArray = Array.isArray(orders) ? orders : [orders];
+  
+  // Get all order IDs
+  const orderIds = ordersArray.map(order => order._id.toString());
+  
+  // Fetch all order meta records for these orders
+  const orderMetaRecords = await OrderMeta.find({
+    orderId: { $in: orderIds }
+  });
+  
+  // Create a map of orderId -> meta records
+  const metaMap = {};
+  orderMetaRecords.forEach(meta => {
+    const orderId = meta.orderId.toString();
+    if (!metaMap[orderId]) {
+      metaMap[orderId] = {};
+    }
+    metaMap[orderId][meta.meta_property] = meta.meta_value;
+  });
+  
+  // Attach meta to each order
+  ordersArray.forEach(order => {
+    const orderId = order._id.toString();
+    const meta = metaMap[orderId] || {};
+    
+    // Attach rejectionReason if it exists
+    if (meta.rejectionReason) {
+      order.rejectionReason = meta.rejectionReason;
+    }
+    
+    // Attach other meta properties if needed
+    Object.keys(meta).forEach(key => {
+      if (key !== 'rejectionReason') {
+        order[key] = meta[key];
+      }
+    });
+  });
+  
+  return Array.isArray(orders) ? ordersArray : ordersArray[0];
+}
 
 // Create a new order (place order from cart)
 router.post('/', auth, async (req, res) => {
@@ -198,10 +243,13 @@ router.get('/publisher', auth, async (req, res) => {
 
     const total = await Order.countDocuments(query);
 
+    // Attach order meta to orders
+    const ordersWithMeta = await attachOrderMeta(orders);
+
     res.json({
       success: true,
       data: {
-        orders,
+        orders: ordersWithMeta,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -315,10 +363,13 @@ router.get('/advertiser', auth, async (req, res) => {
 
     const total = await Order.countDocuments(query);
 
+    // Attach order meta to orders
+    const ordersWithMeta = await attachOrderMeta(orders);
+
     res.json({
       success: true,
       data: {
-        orders,
+        orders: ordersWithMeta,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -403,10 +454,14 @@ router.patch('/:orderId/status', auth, async (req, res) => {
     // Update order status
     await order.updateStatus(status, note, userId);
 
-    // If rejected, add rejection reason
+    // If rejected, save rejection reason in OrderMeta
     if (status === 'rejected' && rejectionReason) {
-      order.rejectionReason = rejectionReason;
-      await order.save();
+      // Find existing rejection reason meta or create new one
+      await OrderMeta.findOneAndUpdate(
+        { orderId: orderId, meta_property: 'rejectionReason' },
+        { meta_value: rejectionReason },
+        { upsert: true, new: true }
+      );
     }
 
     // Update related post or link insertion status
@@ -430,10 +485,13 @@ router.patch('/:orderId/status', auth, async (req, res) => {
       .populate('postId', 'title content')
       .populate('linkInsertionId', 'anchorText anchorUrl');
 
+    // Attach order meta to updated order
+    const orderWithMeta = await attachOrderMeta(updatedOrder);
+
     res.json({
       success: true,
       message: 'Order status updated successfully',
-      data: { order: updatedOrder }
+      data: { order: orderWithMeta }
     });
 
   } catch (error) {
@@ -495,10 +553,24 @@ router.get('/admin', auth, async (req, res) => {
 
     // Search functionality
     if (search) {
-      query.$or = [
+      // Search in notes and rejectionReason (both old field and OrderMeta)
+      const searchConditions = [
         { notes: { $regex: search, $options: 'i' } },
         { rejectionReason: { $regex: search, $options: 'i' } }
       ];
+      
+      // Also search in OrderMeta for rejectionReason
+      const orderMetaRecords = await OrderMeta.find({
+        meta_property: 'rejectionReason',
+        meta_value: { $regex: search, $options: 'i' }
+      });
+      
+      if (orderMetaRecords.length > 0) {
+        const orderIdsFromMeta = orderMetaRecords.map(meta => meta.orderId);
+        searchConditions.push({ _id: { $in: orderIdsFromMeta } });
+      }
+      
+      query.$or = searchConditions;
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -517,6 +589,9 @@ router.get('/admin', auth, async (req, res) => {
 
     const total = await Order.countDocuments(query);
 
+    // Attach order meta to orders
+    const ordersWithMeta = await attachOrderMeta(orders);
+
     // Get order statistics
     const stats = await Order.aggregate([
       { $group: {
@@ -533,7 +608,7 @@ router.get('/admin', auth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        orders,
+        orders: ordersWithMeta,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -581,10 +656,14 @@ router.patch('/admin/:orderId', auth, async (req, res) => {
     // Update order status
     await order.updateStatus(status, note, userId);
 
-    // If rejected, add rejection reason
+    // If rejected, save rejection reason in OrderMeta
     if (status === 'rejected' && rejectionReason) {
-      order.rejectionReason = rejectionReason;
-      await order.save();
+      // Find existing rejection reason meta or create new one
+      await OrderMeta.findOneAndUpdate(
+        { orderId: orderId, meta_property: 'rejectionReason' },
+        { meta_value: rejectionReason },
+        { upsert: true, new: true }
+      );
     }
 
     // Update related post or link insertion status
@@ -608,10 +687,13 @@ router.patch('/admin/:orderId', auth, async (req, res) => {
       .populate('postId', 'title content')
       .populate('linkInsertionId', 'anchorText anchorUrl');
 
+    // Attach order meta to updated order
+    const orderWithMeta = await attachOrderMeta(updatedOrder);
+
     res.json({
       success: true,
       message: 'Order status updated successfully',
-      data: { order: updatedOrder }
+      data: { order: orderWithMeta }
     });
 
   } catch (error) {
@@ -794,9 +876,12 @@ router.get('/:orderId', auth, async (req, res) => {
       }
     }
 
+    // Attach order meta to order
+    const orderWithMeta = await attachOrderMeta(order);
+
     res.json({
       success: true,
-      data: { order }
+      data: { order: orderWithMeta }
     });
 
   } catch (error) {
@@ -850,10 +935,13 @@ router.get('/admin/by-user/:userId', auth, async (req, res) => {
       ]
     });
 
+    // Attach order meta to orders
+    const ordersWithMeta = await attachOrderMeta(orders);
+
     res.json({
       success: true,
       data: {
-        orders,
+        orders: ordersWithMeta,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
