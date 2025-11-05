@@ -567,7 +567,7 @@ export default function PublisherOrderDetailPage() {
               <div className="flex items-center space-x-4 mb-6">
                 <button
                   onClick={() => router.back()}
-                  className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all duration-200 hover:scale-105"
+                  className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all duration-200"
                 >
                   <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 </button>

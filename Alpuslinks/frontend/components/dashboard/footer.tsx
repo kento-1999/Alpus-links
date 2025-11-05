@@ -16,7 +16,7 @@ export function Footer() {
           {/* Left side - Copyright */}
           <div className="flex items-center space-x-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              © {currentYear} Keenthemes. All rights reserved.
+              © {currentYear} AlpusLinks. All rights reserved.
             </p>
           </div>
 

@@ -599,7 +599,7 @@ export default function CreatePostPage() {
             <div className="flex items-center space-x-4 mb-6">
               <button
                 onClick={() => router.back()}
-                className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all duration-200 hover:scale-105"
+                className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all duration-200"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
@@ -1035,14 +1035,14 @@ export default function CreatePostPage() {
                   <div className="p-4 space-y-3">
                     <button
                       onClick={handleSaveDraft}
-                      className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105"
+                      className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform"
                     >
                       <Save className="w-5 h-5" />
                       <span>Save to Drafts</span>
                     </button>
                     <button
                       onClick={handleSendToModeration}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform"
                     >
                       <Send className="w-5 h-5" />
                       <span>Send to Moderation</span>

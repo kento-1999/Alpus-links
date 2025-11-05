@@ -411,13 +411,14 @@ export default function AdvertiserWebsitesPage() {
                               </a>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4">
                             <div className="flex flex-wrap gap-1">
-                              {(website.categories && website.categories.length > 0 ? website.categories : [{ name: 'N/A' }]).slice(0,3).map((cat, idx) => (
-                                <span key={idx} className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded capitalize">{cat.name}</span>
-                              ))}
-                              {website.categories && website.categories.length > 3 && (
-                                <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">+{website.categories.length - 3}</span>
+                              {website.categories && website.categories.length > 0 ? (
+                                website.categories.map((cat, idx) => (
+                                  <span key={idx} className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded capitalize">{cat.name}</span>
+                                ))
+                              ) : (
+                                <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-0.5 rounded">N/A</span>
                               )}
                             </div>
                           </td>

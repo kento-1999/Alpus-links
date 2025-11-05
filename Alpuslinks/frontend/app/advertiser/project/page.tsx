@@ -332,21 +332,21 @@ export default function PostManagementPage() {
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleCreatePost}
-                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200"
               >
                 <Plus className="w-5 h-5" />
                 <span>Create New Post</span>
               </button>
               <button
                 onClick={handleCreateLinkInsertion}
-                className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200"
               >
                 <Plus className="w-5 h-5" />
                 <span>Create Link Insertion</span>
               </button>
               <button
                 onClick={handleWritingGP}
-                className="inline-flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200"
               >
                 <Plus className="w-5 h-5" />
                 <span>Writing + GP</span>
@@ -421,7 +421,7 @@ export default function PostManagementPage() {
               </p>
               <button
                 onClick={handleCreatePost}
-                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200"
               >
                 <Plus className="w-5 h-5" />
                 <span>Create Your First Post</span>
@@ -543,7 +543,7 @@ export default function PostManagementPage() {
                           }
                           
                           // Map order status to display status
-                          let displayStatus = post.status
+                          let displayStatus: 'draft' | 'pending' | 'inProgress' | 'approved' | 'rejected' | 'request' = post.status
                           if (orderStatus) {
                             // Map order statuses to post statuses
                             if (orderStatus === 'inProgress') {
@@ -579,7 +579,7 @@ export default function PostManagementPage() {
                               const domainForPost = (post.domain || getDomainFromUrl(post.completeUrl) || '').toLowerCase()
                               const isRequestedById = requestedOrderPostIds.has(post._id)
                               const isRequestedByDomain = (post.postType === 'link-insertion' || post.postType === 'writing-gp') && requestedOrderDomains.has(domainForPost)
-                              const displayStatus = (isRequestedById || isRequestedByDomain) ? 'request' : post.status
+                              const displayStatus: string = (isRequestedById || isRequestedByDomain) ? 'request' : post.status
                               const hideDelete = displayStatus === 'request' || displayStatus === 'inProgress' || displayStatus === 'approved' || displayStatus === 'published' || displayStatus === 'completed'
                               if (hideDelete) return null
                               return (

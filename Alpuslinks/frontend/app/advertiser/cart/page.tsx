@@ -423,7 +423,7 @@ export default function AdvertiserCartPage() {
               </p>
               <a 
                 href="/advertiser/websites" 
-                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200"
               >
                 <Sparkles className="w-5 h-5" />
                 <span>Browse Websites</span>
@@ -766,7 +766,7 @@ export default function AdvertiserCartPage() {
                       {/* Checkout button */}
                       <button 
                         onClick={handleOrderClick}
-                        className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2"
+                        className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 flex items-center justify-center space-x-2"
                       >
                         <CreditCard className="w-5 h-5" />
                         <span>{areAllItemsSelected() ? 'Place order' : 'Make a order'}</span>

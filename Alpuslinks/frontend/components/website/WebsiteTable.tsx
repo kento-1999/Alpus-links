@@ -388,7 +388,7 @@ export function WebsiteTable({
                   <div className="flex items-center justify-end space-x-2">
                     <button
                       onClick={() => onEdit(website)}
-                      className="group inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md"
+                      className="group inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-200 hover:shadow-md"
                       title="Edit website"
                     >
                       <Edit className="w-4 h-4 mr-1.5" />
@@ -396,7 +396,7 @@ export function WebsiteTable({
                     </button>
                     <button
                       onClick={() => handleDeleteClick(website)}
-                      className="group inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md"
+                      className="group inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 hover:shadow-md"
                       title="Delete website"
                     >
                       <Trash2 className="w-4 h-4 mr-1.5" />

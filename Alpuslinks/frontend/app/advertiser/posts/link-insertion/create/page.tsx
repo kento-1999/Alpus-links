@@ -357,11 +357,11 @@ export default function CreateLinkInsertionAsPostPage() {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={saveDraft} disabled={saving} className="flex-1 inline-flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white py-3 rounded-xl disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+              <button onClick={saveDraft} disabled={saving} className="flex-1 inline-flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white py-3 rounded-xl disabled:opacity-50 shadow-lg hover:shadow-xl transform transition-all duration-200">
                 <Save className="w-4 h-4" />
                 <span>{saving ? 'Saving...' : 'Save Draft'}</span>
               </button>
-              <button onClick={submit} disabled={saving} className="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+              <button onClick={submit} disabled={saving} className="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl disabled:opacity-50 shadow-lg hover:shadow-xl transform transition-all duration-200">
                 <Send className="w-4 h-4" />
                 <span>{saving ? 'Submitting...' : 'Send to Moderation'}</span>
               </button>
