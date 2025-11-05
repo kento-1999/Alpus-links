@@ -868,6 +868,101 @@ router.get('/login-trends', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/users/balance
+// @desc    Get current user's balance
+// @access  Private
+router.get('/balance', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('balance firstName lastName email');
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        balance: user.balance || 0,
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get balance error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+});
+
+// @route   POST /api/users/balance/add
+// @desc    Add balance to user (admin only)
+// @access  Private (Admin only)
+router.post('/balance/add', auth, [
+  body('userId').isMongoId().withMessage('Invalid user ID'),
+  body('amount').isFloat({ min: 0.01 }).withMessage('Amount must be a positive number')
+], async (req, res) => {
+  try {
+    // Check if user is admin
+    const currentUser = await User.findById(req.user.id).populate('role');
+    const userRole = currentUser?.role?.name?.toLowerCase();
+    
+    if (!['admin', 'super admin'].includes(userRole)) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Access denied. Admin privileges required.' 
+      });
+    }
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
+    }
+
+    const { userId, amount } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    user.balance = (user.balance || 0) + parseFloat(amount);
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `Balance added successfully. New balance: $${user.balance.toFixed(2)}`,
+      data: {
+        userId: user._id,
+        previousBalance: (user.balance || 0) - parseFloat(amount),
+        amountAdded: parseFloat(amount),
+        newBalance: user.balance
+      }
+    });
+  } catch (error) {
+    console.error('Add balance error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+});
+
 // @route   GET /api/users/:id
 // @desc    Get user by ID
 // @access  Private

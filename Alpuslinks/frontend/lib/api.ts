@@ -979,6 +979,18 @@ class ApiService {
   async getAdvertiserOrderStatsTrendsWithDates(startDate: string, endDate: string) {
     return this.request(`/orders/advertiser/stats/trends?startDate=${startDate}&endDate=${endDate}`)
   }
+
+  // Balance methods
+  async getBalance() {
+    return this.request('/users/balance')
+  }
+
+  async addBalance(userId: string, amount: number) {
+    return this.request('/users/balance/add', {
+      method: 'POST',
+      body: JSON.stringify({ userId, amount })
+    })
+  }
 }
 
 export const apiService = new ApiService(API_BASE_URL)

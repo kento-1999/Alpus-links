@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
@@ -12,7 +12,8 @@ import {
   LogOut,
   Menu,
   Sun,
-  Moon
+  Moon,
+  Wallet
 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { getRoleName, getRoleNameLowercase } from '@/lib/roleUtils'
@@ -20,9 +21,12 @@ import { DefaultAvatar } from '@/components/ui/DefaultAvatar'
 import { ShoppingCart } from 'lucide-react'
 import { useAppSelector } from '@/hooks/redux'
 import { selectCartSummary } from '@/store/slices/cartSlice'
+import { apiService } from '@/lib/api'
 
 export function Header() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [balance, setBalance] = useState<number | null>(null)
+  const [balanceLoading, setBalanceLoading] = useState(false)
   const { theme, setTheme } = useTheme()
   const { user, logout, switchRole } = useAuth()
   const pathname = usePathname()
@@ -30,6 +34,38 @@ export function Header() {
   const cartSummary = useAppSelector(selectCartSummary)
   const currentRole = getRoleName(user?.role).toLowerCase()
   const profileRef = useRef<HTMLDivElement>(null)
+
+  // Fetch balance for advertisers and publishers
+  const shouldShowBalance = currentRole === 'advertiser' || currentRole === 'publisher'
+
+  const fetchBalance = useCallback(async () => {
+    try {
+      setBalanceLoading(true)
+      const response = await apiService.getBalance()
+      if ((response.data as any)?.success) {
+        setBalance((response.data as any).data.balance || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching balance:', error)
+      setBalance(null)
+    } finally {
+      setBalanceLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (shouldShowBalance && user) {
+      fetchBalance()
+    }
+  }, [user, shouldShowBalance, fetchBalance])
+
+  const handleBalanceClick = () => {
+    if (currentRole === 'advertiser') {
+      router.push('/advertiser/balance')
+    } else if (currentRole === 'publisher') {
+      router.push('/publisher/balance')
+    }
+  }
 
   // Handle click outside to close profile dropdown
   useEffect(() => {
@@ -203,8 +239,36 @@ export function Header() {
             </nav>
           </div>
 
-          {/* Right side - Cart, Notifications, Theme, Profile */}
+          {/* Right side - Balance, Cart, Notifications, Theme, Profile */}
           <div className="flex items-center space-x-3 ml-auto">
+
+            {/* Balance (for Advertiser and Publisher) */}
+            {shouldShowBalance && (
+              <button
+                onClick={handleBalanceClick}
+                className="group relative flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/60 dark:bg-gray-800/60 border border-gray-200/50 dark:border-gray-700/50 hover:bg-white dark:hover:bg-gray-700 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 transition-all duration-200"
+                aria-label="Balance"
+                title="View Balance"
+              >
+                <Wallet className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200" />
+                <div className="hidden sm:flex flex-col items-end">
+                  {balanceLoading ? (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Loading...</span>
+                  ) : balance !== null ? (
+                    <>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {currentRole === 'advertiser' ? 'Balance' : 'Earnings'}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        ${balance.toFixed(2)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">--</span>
+                  )}
+                </div>
+              </button>
+            )}
 
             {/* Cart (only for Advertiser) */}
             {currentRole === 'advertiser' && (

@@ -66,6 +66,33 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    // Calculate total order amount
+    let totalAmount = 0;
+    for (const item of items) {
+      totalAmount += item.price || 0;
+    }
+
+    // Check advertiser balance
+    const advertiser = await User.findById(advertiserId);
+    if (!advertiser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Advertiser not found'
+      });
+    }
+
+    const currentBalance = advertiser.balance || 0;
+    if (currentBalance < totalAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient balance. Your balance is $${currentBalance.toFixed(2)}, but order total is $${totalAmount.toFixed(2)}`
+      });
+    }
+
+    // Deduct balance from advertiser
+    advertiser.balance = currentBalance - totalAmount;
+    await advertiser.save();
+
     const createdOrders = [];
 
     for (const item of items) {
@@ -451,8 +478,34 @@ router.patch('/:orderId/status', auth, async (req, res) => {
       });
     }
 
+    // Store old status to check if balance needs to be adjusted
+    const oldStatus = order.status;
+
     // Update order status
     await order.updateStatus(status, note, userId);
+
+    // Handle balance logic based on status change
+    // Only process balance changes if status actually changed
+    if (status === 'completed' && oldStatus !== 'completed') {
+      // Add balance to publisher when order is completed
+      // Only if order wasn't already completed (to avoid double payment)
+      const publisher = await User.findById(order.publisherId);
+      if (publisher) {
+        publisher.balance = (publisher.balance || 0) + order.price;
+        await publisher.save();
+      }
+    } else if (status === 'rejected' && oldStatus !== 'rejected') {
+      // Refund balance to advertiser when order is rejected
+      // Only if order wasn't already rejected (to avoid double refund)
+      // But only if order wasn't completed (if completed, publisher already got paid)
+      if (oldStatus !== 'completed') {
+        const advertiser = await User.findById(order.advertiserId);
+        if (advertiser) {
+          advertiser.balance = (advertiser.balance || 0) + order.price;
+          await advertiser.save();
+        }
+      }
+    }
 
     // If rejected, save rejection reason in OrderMeta
     if (status === 'rejected' && rejectionReason) {
@@ -653,8 +706,28 @@ router.patch('/admin/:orderId', auth, async (req, res) => {
       });
     }
 
+    // Store old status to check if balance needs to be adjusted
+    const oldStatus = order.status;
+
     // Update order status
     await order.updateStatus(status, note, userId);
+
+    // Handle balance logic based on status change
+    if (status === 'completed' && oldStatus !== 'completed') {
+      // Add balance to publisher when order is completed
+      const publisher = await User.findById(order.publisherId);
+      if (publisher) {
+        publisher.balance = (publisher.balance || 0) + order.price;
+        await publisher.save();
+      }
+    } else if (status === 'rejected' && oldStatus !== 'rejected') {
+      // Refund balance to advertiser when order is rejected
+      const advertiser = await User.findById(order.advertiserId);
+      if (advertiser) {
+        advertiser.balance = (advertiser.balance || 0) + order.price;
+        await advertiser.save();
+      }
+    }
 
     // Save note (statusNote) to OrderMeta as internalNote
     if (note && note.trim()) {

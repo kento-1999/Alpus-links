@@ -18,7 +18,8 @@ import {
   FileText,
   Tag,
   ClipboardList,
-  Calendar
+  Calendar,
+  Wallet
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
@@ -110,6 +111,11 @@ export function Sidebar() {
         icon: ClipboardList,
         href: '/publisher/orders'
       })
+      userChildren.push({
+        name: 'My Balance',
+        icon: Wallet,
+        href: '/publisher/balance'
+      })
     }
 
     // Available Websites: available to advertisers
@@ -128,6 +134,11 @@ export function Sidebar() {
         name: 'My Orders',
         icon: ClipboardList,
         href: '/advertiser/orders'
+      })
+      userChildren.push({
+        name: 'My Balance',
+        icon: Wallet,
+        href: '/advertiser/balance'
       })
     }
 

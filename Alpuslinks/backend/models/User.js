@@ -83,6 +83,11 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: {
     type: Date,
     default: null
+  },
+  balance: {
+    type: Number,
+    default: 0,
+    min: 0
   }
 }, {
   timestamps: true,
