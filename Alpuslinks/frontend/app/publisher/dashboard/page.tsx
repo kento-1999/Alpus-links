@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { apiService } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import { OrderStatusChart } from '@/components/charts/OrderStatusChart'
+import { EarningsChart } from '@/components/charts/EarningsChart'
 
 interface Website {
   _id: string
@@ -30,12 +31,27 @@ interface OrderStatusTrendsResponse {
   period: string
 }
 
+interface EarningsTrendData {
+  date: string
+  earnings: number
+  count: number
+}
+
+interface EarningsTrendsResponse {
+  data: EarningsTrendData[]
+  period: string
+  totalEarnings?: number
+  totalCount?: number
+}
+
 export default function PublisherDashboardPage() {
   const [websites, setWebsites] = useState<Website[]>([])
   const [stats, setStats] = useState<any>(null)
   const [orderStatusData, setOrderStatusData] = useState<OrderStatusTrendData[]>([])
+  const [earningsData, setEarningsData] = useState<EarningsTrendData[]>([])
   const [loading, setLoading] = useState(true)
   const [orderLoading, setOrderLoading] = useState(true)
+  const [earningsLoading, setEarningsLoading] = useState(true)
   const { user } = useAuth()
   const router = useRouter()
 
@@ -104,10 +120,47 @@ export default function PublisherDashboardPage() {
     }
   }
 
+  const loadEarningsData = async (period: '7d' | '30d' | '90d' = '30d') => {
+    try {
+      setEarningsLoading(true)
+      const response = await apiService.getPublisherEarningsTrends(period)
+      const responseData = response.data as EarningsTrendsResponse
+      setEarningsData(responseData.data || [])
+    } catch (err) {
+      console.error('Failed to load earnings data:', err)
+    } finally {
+      setEarningsLoading(false)
+    }
+  }
+
+  const handleEarningsTimeRangeChange = (timeRange: '7d' | '30d' | '90d' | 'custom') => {
+    if (timeRange !== 'custom') {
+      loadEarningsData(timeRange)
+    }
+  }
+
+  const handleCustomEarningsDateChange = (startDate: string, endDate: string) => {
+    loadEarningsDataWithCustomDates(startDate, endDate)
+  }
+
+  const loadEarningsDataWithCustomDates = async (startDate: string, endDate: string) => {
+    try {
+      setEarningsLoading(true)
+      const response = await apiService.getPublisherEarningsTrendsWithDates(startDate, endDate)
+      const responseData = response.data as EarningsTrendsResponse
+      setEarningsData(responseData.data || [])
+    } catch (err) {
+      console.error('Failed to load earnings data:', err)
+    } finally {
+      setEarningsLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadWebsites()
     loadStats()
     loadOrderStatusData('30d')
+    loadEarningsData('30d')
   }, [user?.id])
 
   const handleAddWebsite = () => {
@@ -202,14 +255,27 @@ export default function PublisherDashboardPage() {
             </div>
           </div>
 
-          {/* Order Status Chart */}
-          <div className="mb-8">
-            <OrderStatusChart
-              data={orderStatusData}
-              loading={orderLoading}
-              onTimeRangeChange={handleOrderTimeRangeChange}
-              onCustomDateChange={handleCustomOrderDateChange}
-            />
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Order Status Chart */}
+            <div>
+              <OrderStatusChart
+                data={orderStatusData}
+                loading={orderLoading}
+                onTimeRangeChange={handleOrderTimeRangeChange}
+                onCustomDateChange={handleCustomOrderDateChange}
+              />
+            </div>
+
+            {/* Earnings Status Chart */}
+            <div>
+              <EarningsChart
+                data={earningsData}
+                loading={earningsLoading}
+                onTimeRangeChange={handleEarningsTimeRangeChange}
+                onCustomDateChange={handleCustomEarningsDateChange}
+              />
+            </div>
           </div>
 
           {/* Recent Activity */}

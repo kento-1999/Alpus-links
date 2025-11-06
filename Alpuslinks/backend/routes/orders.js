@@ -1538,4 +1538,120 @@ router.get('/advertiser/stats/trends', auth, async (req, res) => {
   }
 });
 
+// Get earnings trends over time for publisher dashboard chart
+router.get('/publisher/earnings/trends', auth, async (req, res) => {
+  try {
+    const userRole = req.user.role?.name;
+    const userId = req.user._id;
+    
+    // Check if user is publisher
+    if (userRole?.toLowerCase() !== 'publisher') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Publisher privileges required.'
+      });
+    }
+
+    const { period = '30d', startDate: startDateParam, endDate: endDateParam } = req.query;
+    
+    // Calculate date range based on period or use custom dates
+    let endDate = new Date();
+    let startDate = new Date();
+    
+    // If custom dates provided, use them; otherwise use period
+    if (startDateParam && endDateParam) {
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      // Set endDate to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      switch (period) {
+        case '7d':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case '30d':
+          startDate.setDate(endDate.getDate() - 30);
+          break;
+        case '90d':
+          startDate.setDate(endDate.getDate() - 90);
+          break;
+        default:
+          startDate.setDate(endDate.getDate() - 30);
+      }
+    }
+
+    // Get completed orders grouped by date and sum earnings
+    const earningsStats = await Order.aggregate([
+      {
+        $match: {
+          publisherId: userId,
+          status: 'completed',
+          completedAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: { format: '%Y-%m-%d', date: '$completedAt' }
+            }
+          },
+          earnings: { $sum: '$price' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    // Format the data for chart
+    const formattedData = earningsStats.map(item => ({
+      date: item._id.date,
+      earnings: item.earnings,
+      count: item.count
+    }));
+
+    // Fill in missing dates with zeros
+    const allDates = [];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      allDates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    const finalData = allDates.map(date => {
+      const existing = formattedData.find(d => d.date === date);
+      if (existing) {
+        return existing;
+      }
+      return {
+        date,
+        earnings: 0,
+        count: 0
+      };
+    });
+
+    // Calculate total earnings
+    const totalEarnings = finalData.reduce((sum, item) => sum + item.earnings, 0);
+    const totalCount = finalData.reduce((sum, item) => sum + item.count, 0);
+
+    res.json({
+      success: true,
+      data: finalData,
+      period,
+      totalEarnings,
+      totalCount
+    });
+
+  } catch (error) {
+    console.error('Error fetching publisher earnings trends:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch earnings trends',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

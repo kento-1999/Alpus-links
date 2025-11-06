@@ -972,6 +972,14 @@ class ApiService {
     return this.request(`/orders/publisher/stats/trends?startDate=${startDate}&endDate=${endDate}`)
   }
 
+  async getPublisherEarningsTrends(period: '7d' | '30d' | '90d' = '30d') {
+    return this.request(`/orders/publisher/earnings/trends?period=${period}`)
+  }
+
+  async getPublisherEarningsTrendsWithDates(startDate: string, endDate: string) {
+    return this.request(`/orders/publisher/earnings/trends?startDate=${startDate}&endDate=${endDate}`)
+  }
+
   async getAdvertiserOrderStatsTrends(period: '7d' | '30d' | '90d' = '30d') {
     return this.request(`/orders/advertiser/stats/trends?period=${period}`)
   }
