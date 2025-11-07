@@ -32,25 +32,29 @@ async function attachOrderMeta(orders) {
     metaMap[orderId][meta.meta_property] = meta.meta_value;
   });
   
-  // Attach meta to each order
-  ordersArray.forEach(order => {
-    const orderId = order._id.toString();
+  // Convert to plain objects and attach meta to each order
+  const result = ordersArray.map(order => {
+    // Convert Mongoose document to plain object
+    const orderObj = order.toObject ? order.toObject() : order;
+    const orderId = orderObj._id.toString();
     const meta = metaMap[orderId] || {};
     
     // Attach rejectionReason if it exists
     if (meta.rejectionReason) {
-      order.rejectionReason = meta.rejectionReason;
+      orderObj.rejectionReason = meta.rejectionReason;
     }
     
-    // Attach other meta properties if needed
+    // Attach other meta properties (including publishedUrl)
     Object.keys(meta).forEach(key => {
       if (key !== 'rejectionReason') {
-        order[key] = meta[key];
+        orderObj[key] = meta[key];
       }
     });
+    
+    return orderObj;
   });
   
-  return Array.isArray(orders) ? ordersArray : ordersArray[0];
+  return Array.isArray(orders) ? result : result[0];
 }
 
 // Create a new order (place order from cart)

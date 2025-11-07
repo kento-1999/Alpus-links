@@ -17,7 +17,8 @@ import {
   FileText,
   Eye,
   Filter,
-  Search
+  Search,
+  ExternalLink
 } from 'lucide-react'
 import { apiService } from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -61,6 +62,7 @@ interface Order {
   updatedAt: string
   completedAt?: string
   rejectionReason?: string
+  publishedUrl?: string
   timeline?: Array<{
     status: string
     timestamp: string
@@ -90,6 +92,8 @@ export default function AdvertiserOrdersPage() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [orderToReject, setOrderToReject] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [showApproveModal, setShowApproveModal] = useState(false)
+  const [orderToApprove, setOrderToApprove] = useState<Order | null>(null)
 
   // Tab configuration
   const tabs: TabData[] = [
@@ -260,11 +264,14 @@ export default function AdvertiserOrdersPage() {
         toast.success(`Order ${action === 'approve' ? 'approved' : 'rejected'} successfully`)
         fetchOrders()
         fetchCounts()
-        // Close modal if it was open
+        // Close modals if they were open
         if (action === 'reject') {
           setShowRejectModal(false)
           setOrderToReject(null)
           setRejectionReason('')
+        } else if (action === 'approve') {
+          setShowApproveModal(false)
+          setOrderToApprove(null)
         }
       } else {
         throw new Error((response.data as any)?.message || 'Failed to update order status')
@@ -297,6 +304,45 @@ export default function AdvertiserOrdersPage() {
         return
       }
       handleOrderAction(orderToReject, 'reject', rejectionReason)
+    }
+  }
+
+  // Open approve modal
+  const openApproveModal = async (order: Order) => {
+    try {
+      // If publishedUrl is missing, fetch the full order details to get metadata
+      if (!order.publishedUrl) {
+        const response = await apiService.getOrder(order._id)
+        if ((response.data as any)?.success) {
+          const orderData = (response.data as any)?.data?.order || (response.data as any)?.data
+          if (orderData) {
+            setOrderToApprove(orderData)
+            setShowApproveModal(true)
+            return
+          }
+        }
+      }
+      // Use the order as-is if publishedUrl exists or if fetch failed
+      setOrderToApprove(order)
+      setShowApproveModal(true)
+    } catch (error) {
+      console.error('Error fetching order details:', error)
+      // Fallback to using the order as-is
+      setOrderToApprove(order)
+      setShowApproveModal(true)
+    }
+  }
+
+  // Close approve modal
+  const closeApproveModal = () => {
+    setShowApproveModal(false)
+    setOrderToApprove(null)
+  }
+
+  // Confirm approve order
+  const confirmApproveOrder = () => {
+    if (orderToApprove) {
+      handleOrderAction(orderToApprove._id, 'approve')
     }
   }
 
@@ -673,8 +719,17 @@ export default function AdvertiserOrdersPage() {
                               {/* Approve Button */}
                               {order.status === 'advertiserApproval' && (
                                 <div className="flex flex-col space-y-2">
+                                  {order.publishedUrl && (
+                                    <button
+                                      onClick={() => window.open(order.publishedUrl, '_blank', 'noopener,noreferrer')}
+                                      className="w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 shadow-sm"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                      <span>Confirm URL</span>
+                                    </button>
+                                  )}
                                   <button
-                                    onClick={() => handleOrderAction(order._id, 'approve')}
+                                    onClick={() => openApproveModal(order)}
                                     className="w-full px-4 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 shadow-sm"
                                   >
                                     <CheckCircle className="w-4 h-4" />
@@ -728,6 +783,119 @@ export default function AdvertiserOrdersPage() {
             )}
         </div>
       </div>
+
+      {/* Approve Order Modal */}
+      {showApproveModal && orderToApprove && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full border border-gray-200 dark:border-gray-700">
+            <div className="p-6">
+              {/* Modal Header */}
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Approve Order
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Confirm the published URL before approving
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="mb-6 space-y-4">
+                {/* Order Info */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Order Type:</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {orderToApprove.type === 'guestPost' ? 'Guest Post' : 
+                         orderToApprove.type === 'linkInsertion' ? 'Link Insertion' : 
+                         'Writing + GP'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Website:</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {orderToApprove.websiteId.domain}
+                      </span>
+                    </div>
+                    {orderToApprove.postId?.title && (
+                      <div className="flex items-start justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Post Title:</span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white text-right max-w-xs">
+                          {orderToApprove.postId.title}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Published URL */}
+                {orderToApprove.publishedUrl ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Published URL <span className="text-green-500">*</span>
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={orderToApprove.publishedUrl}
+                        readOnly
+                        className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                      <button
+                        onClick={() => window.open(orderToApprove.publishedUrl, '_blank', 'noopener,noreferrer')}
+                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                        title="Open URL in new tab"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Please verify the published URL before approving the order.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                    <div className="flex items-start space-x-2">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                          No Published URL Available
+                        </p>
+                        <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
+                          This order does not have a published URL. You can still approve the order.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={closeApproveModal}
+                  className="flex-1 px-4 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmApproveOrder}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center space-x-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Confirm Approval</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reject Order Modal */}
       {showRejectModal && (
