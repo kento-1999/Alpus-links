@@ -52,21 +52,15 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         return
       }
       
+      // Wait a bit for Redux state to update with error
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       // If login failed, check for specific error messages
       if (error) {
         const message = error
         console.log('Login error message:', message) // Debug log
         
-        if (message.includes('Invalid credentials') || message.includes('Invalid email') || message.includes('Invalid password')) {
-          toast.error('⚠️ Invalid email or password. Please check your credentials and try again.', {
-            duration: 4000,
-            style: {
-              background: '#fef3c7',
-              color: '#92400e',
-              border: '1px solid #f59e0b'
-            }
-          })
-        } else if (message === '2FA_REQUIRED') {
+        if (message === '2FA_REQUIRED') {
           console.log('2FA required, sending code...') // Debug log
           try {
             const codeSent = await sendTwoFactorCode(data.email, 'login')
@@ -83,25 +77,19 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
             toast.error('Failed to send verification code')
           }
         } else {
-          toast.error(message)
+          // For all other errors (including invalid credentials), show error message
+          toast.error('⚠️ Invalid email or password. Please check your credentials and try again.', {
+            duration: 4000,
+            style: {
+              background: '#fef3c7',
+              color: '#92400e',
+              border: '1px solid #f59e0b'
+            }
+          })
         }
       } else {
-        // If no error message but login failed, try to send 2FA code
-        // This handles the case where 2FA is required but error state isn't set properly
-        console.log('No error message, trying to send 2FA code...') // Debug log
-        try {
-          const codeSent = await sendTwoFactorCode(data.email, 'login')
-          if (codeSent) {
-            setUserEmail(data.email)
-            setShow2FA(true)
-            toast.success('Verification code sent to your email')
-            return
-          }
-        } catch (codeError: any) {
-          console.error('Send 2FA code error:', codeError)
-        }
-        
-        // Generic login failed message
+        // If no error message but login failed, show generic error
+        // Don't try to send 2FA code as fallback - only send when explicitly required
         toast.error('⚠️ Invalid email or password. Please check your credentials and try again.', {
           duration: 4000,
           style: {
