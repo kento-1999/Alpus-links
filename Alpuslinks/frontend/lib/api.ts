@@ -848,10 +848,10 @@ class ApiService {
     return this.request(`/orders/advertiser?${params.toString()}`)
   }
 
-  async updateOrderStatus(orderId: string, status: string, note?: string, rejectionReason?: string) {
+  async updateOrderStatus(orderId: string, status: string, note?: string, rejectionReason?: string, publishedUrl?: string) {
     return this.request(`/orders/${orderId}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status, note, rejectionReason })
+      body: JSON.stringify({ status, note, rejectionReason, publishedUrl })
     })
   }
 

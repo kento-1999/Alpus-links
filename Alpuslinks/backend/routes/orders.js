@@ -420,7 +420,7 @@ router.get('/advertiser', auth, async (req, res) => {
 router.patch('/:orderId/status', auth, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status, note, rejectionReason } = req.body;
+    const { status, note, rejectionReason, publishedUrl } = req.body;
     const userId = req.user.id;
 
     const order = await Order.findById(orderId);
@@ -513,6 +513,15 @@ router.patch('/:orderId/status', auth, async (req, res) => {
       await OrderMeta.findOneAndUpdate(
         { orderId: orderId, meta_property: 'rejectionReason' },
         { meta_value: rejectionReason },
+        { upsert: true, new: true }
+      );
+    }
+
+    // If sent for approval, save published URL in OrderMeta (for guest post orders)
+    if (status === 'advertiserApproval' && publishedUrl) {
+      await OrderMeta.findOneAndUpdate(
+        { orderId: orderId, meta_property: 'publishedUrl' },
+        { meta_value: publishedUrl },
         { upsert: true, new: true }
       );
     }
