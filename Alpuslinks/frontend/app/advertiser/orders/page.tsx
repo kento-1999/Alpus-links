@@ -670,7 +670,7 @@ export default function AdvertiserOrdersPage() {
                                 )}
                               </div>
                               
-                              {/* Approve/Reject Buttons */}
+                              {/* Approve Button */}
                               {order.status === 'advertiserApproval' && (
                                 <div className="flex flex-col space-y-2">
                                   <button
@@ -679,13 +679,6 @@ export default function AdvertiserOrdersPage() {
                                   >
                                     <CheckCircle className="w-4 h-4" />
                                     <span>Approve Order</span>
-                                  </button>
-                                  <button
-                                    onClick={() => openRejectModal(order._id)}
-                                    className="w-full px-4 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 shadow-sm"
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                    <span>Reject Order</span>
                                   </button>
                                 </div>
                               )}
