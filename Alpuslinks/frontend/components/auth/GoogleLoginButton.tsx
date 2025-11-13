@@ -74,6 +74,14 @@ export function GoogleLoginButton({ onSuccess, onError }: GoogleLoginButtonProps
     try {
       setIsLoading(true)
       
+      // Check if Google Client ID is configured
+      if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+        console.error('❌ Google Client ID is not configured');
+        onError?.('Google login is not configured. Please contact the administrator.')
+        setIsLoading(false)
+        return
+      }
+      
       console.log('🔍 Google Login Debug Info:');
       console.log('   Client ID:', process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
       console.log('   Current URL:', window.location.href);
@@ -96,9 +104,16 @@ export function GoogleLoginButton({ onSuccess, onError }: GoogleLoginButtonProps
       }
 
       // Initialize Google Identity Services
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
       console.log('🔧 Initializing Google Identity Services...');
+      console.log('🔑 Using Client ID:', clientId ? `${clientId.substring(0, 20)}...` : 'NOT SET');
+      
+      if (!clientId) {
+        throw new Error('NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured');
+      }
+      
       window.google.accounts.id.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        client_id: clientId,
         callback: handleCredentialResponse,
         auto_select: false,
         cancel_on_tap_outside: true,
@@ -141,6 +156,13 @@ export function GoogleLoginButton({ onSuccess, onError }: GoogleLoginButtonProps
     try {
       setIsLoading(true)
       
+      if (!response || !response.credential) {
+        console.error('❌ Invalid Google credential response');
+        onError?.('Invalid response from Google. Please try again.')
+        setIsLoading(false)
+        return
+      }
+      
       console.log('🎫 Google credential received:', {
         hasCredential: !!response.credential,
         credentialLength: response.credential?.length,
@@ -156,11 +178,29 @@ export function GoogleLoginButton({ onSuccess, onError }: GoogleLoginButtonProps
         onSuccess?.()
       } else {
         console.log('❌ Google login failed - no result');
-        onError?.('Google login failed')
+        onError?.('Google login failed. Please try again.')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Google credential handling error:', error)
-      onError?.('Google login failed')
+      
+      // Provide more specific error messages
+      let errorMessage = 'Google login failed. Please try again.'
+      
+      if (error?.message) {
+        if (error.message.includes('not configured') || error.message.includes('GOOGLE_NOT_CONFIGURED')) {
+          errorMessage = 'Google login is not configured. Please contact support.'
+        } else if (error.message.includes('expired') || error.message.includes('TOKEN_EXPIRED')) {
+          errorMessage = 'Your session has expired. Please try logging in again.'
+        } else if (error.message.includes('invalid') || error.message.includes('INVALID_TOKEN')) {
+          errorMessage = 'Invalid authentication token. Please try again.'
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      onError?.(errorMessage)
     } finally {
       setIsLoading(false)
     }

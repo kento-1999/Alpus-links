@@ -330,10 +330,18 @@ class ApiService {
 
   // Google OAuth login
   async googleLogin(token: string) {
-    return this.request('/auth/google', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    })
+    try {
+      return await this.request('/auth/google', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      })
+    } catch (error: any) {
+      // Re-throw with more context if available
+      if (error.message) {
+        throw new Error(error.message)
+      }
+      throw error
+    }
   }
 
   // 2FA endpoints

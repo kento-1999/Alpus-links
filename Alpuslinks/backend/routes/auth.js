@@ -13,8 +13,14 @@ const SystemConfig = require('../models/SystemConfig');
 const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 
-// Initialize Google OAuth client
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// Helper function to get Google OAuth client (lazy initialization)
+const getGoogleOAuthClient = () => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    throw new Error('GOOGLE_CLIENT_ID is not configured');
+  }
+  return new OAuth2Client(clientId);
+};
 
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token
@@ -375,20 +381,117 @@ router.get('/verify-reset-token/:token', async (req, res) => {
 // @access  Public
 router.post('/google', async (req, res) => {
   try {
+    // Check if Google Client ID is configured
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      console.error('Google OAuth error: GOOGLE_CLIENT_ID is not configured');
+      return res.status(500).json({ 
+        message: 'Google OAuth is not configured. Please contact the administrator.',
+        code: 'GOOGLE_NOT_CONFIGURED'
+      });
+    }
+
     const { token } = req.body;
 
     if (!token) {
       return res.status(400).json({ message: 'Google token is required' });
     }
 
-    // Verify the Google token
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID,
+    // Get the Google Client ID
+    const googleClientId = process.env.GOOGLE_CLIENT_ID;
+    if (!googleClientId) {
+      return res.status(500).json({ 
+        message: 'Google OAuth is not configured. Please contact the administrator.',
+        code: 'GOOGLE_NOT_CONFIGURED'
+      });
+    }
+
+    console.log('🔍 Google OAuth Debug:', {
+      configuredClientId: googleClientId,
+      tokenLength: token?.length,
+      tokenPreview: token?.substring(0, 20) + '...'
     });
 
+    // Verify the Google token
+    let ticket;
+    try {
+      const client = getGoogleOAuthClient();
+      ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: googleClientId,
+      });
+    } catch (verifyError) {
+      console.error('Google token verification error:', verifyError);
+      
+      // Try to decode the token to see what audience it was issued for
+      try {
+        const tokenParts = token.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+          console.error('🔍 Token payload (for debugging):', {
+            tokenAudience: payload.aud,
+            tokenIssuer: payload.iss,
+            tokenEmail: payload.email,
+            configuredClientId: googleClientId,
+            match: payload.aud === googleClientId
+          });
+        }
+      } catch (decodeError) {
+        console.error('Could not decode token:', decodeError);
+      }
+      
+      // Provide more specific error messages
+      if (verifyError.message && verifyError.message.includes('Token used too early')) {
+        return res.status(400).json({ 
+          message: 'Token is not yet valid. Please try again.',
+          code: 'TOKEN_TOO_EARLY'
+        });
+      }
+      if (verifyError.message && verifyError.message.includes('Token used too late')) {
+        return res.status(400).json({ 
+          message: 'Token has expired. Please try logging in again.',
+          code: 'TOKEN_EXPIRED'
+        });
+      }
+      if (verifyError.message && verifyError.message.includes('Invalid token signature')) {
+        return res.status(400).json({ 
+          message: 'Invalid token. Please try logging in again.',
+          code: 'INVALID_TOKEN'
+        });
+      }
+      if (verifyError.message && (verifyError.message.includes('audience') || verifyError.message.includes('Wrong recipient'))) {
+        return res.status(400).json({ 
+          message: 'Token audience mismatch. The Google Client ID in frontend and backend must match. Please check your configuration.',
+          code: 'AUDIENCE_MISMATCH',
+          details: process.env.NODE_ENV === 'development' ? {
+            error: verifyError.message,
+            configuredClientId: googleClientId
+          } : undefined
+        });
+      }
+      
+      return res.status(400).json({ 
+        message: 'Failed to verify Google token. Please try again.',
+        code: 'TOKEN_VERIFICATION_FAILED',
+        details: process.env.NODE_ENV === 'development' ? verifyError.message : undefined
+      });
+    }
+
     const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(400).json({ 
+        message: 'Invalid token payload. Please try again.',
+        code: 'INVALID_PAYLOAD'
+      });
+    }
+
     const { email, given_name, family_name, picture } = payload;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        message: 'Email not found in Google account. Please ensure your Google account has an email address.',
+        code: 'NO_EMAIL'
+      });
+    }
 
     // Check if user exists
     let user = await User.findOne({ email }).populate('role', 'name permissions');
@@ -493,7 +596,27 @@ router.post('/google', async (req, res) => {
     });
   } catch (error) {
     console.error('Google login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    
+    // Provide more detailed error messages
+    if (error.name === 'MongoError' || error.name === 'MongoServerError') {
+      return res.status(500).json({ 
+        message: 'Database error occurred. Please try again later.',
+        code: 'DATABASE_ERROR'
+      });
+    }
+    
+    if (error.message && error.message.includes('role')) {
+      return res.status(400).json({ 
+        message: 'Failed to assign user role. Please contact support.',
+        code: 'ROLE_ERROR'
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'An unexpected error occurred. Please try again.',
+      code: 'SERVER_ERROR',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

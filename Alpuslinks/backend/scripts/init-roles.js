@@ -100,8 +100,10 @@ async function initializeRoles() {
     const systemUserId = new mongoose.Types.ObjectId();
 
     for (const roleData of defaultRoles) {
-      // Check if role already exists
-      const existingRole = await Role.findOne({ name: roleData.name });
+        // Case-insensitive check if role already exists (idempotent)
+        // Escape the role name for safe regex use
+        const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const existingRole = await Role.findOne({ name: new RegExp(`^${escapeRegex(roleData.name)}$`, 'i') });
       
       if (existingRole) {
         console.log(`⚠️  Role '${roleData.name}' already exists, skipping...`);
